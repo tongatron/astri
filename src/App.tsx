@@ -6,11 +6,12 @@ import TimeControls from './components/ui/TimeControls';
 import { useStore } from './state/store';
 
 const SkySphere3D = lazy(() => import('./components/scene3d/SkySphere3D'));
+const SolarSystem3D = lazy(() => import('./components/scene3d/SolarSystem3D'));
 
-function SkyFallback() {
+function SceneFallback({ label }: { label: string }) {
   return (
     <div className="grid h-full place-items-center text-sm text-night-300">
-      Caricamento sfera celeste…
+      Caricamento {label}…
     </div>
   );
 }
@@ -24,8 +25,12 @@ export default function App() {
         <Sidebar />
         <main className="relative flex-1 overflow-hidden">
           {view === 'sky3d' ? (
-            <Suspense fallback={<SkyFallback />}>
+            <Suspense fallback={<SceneFallback label="sfera celeste" />}>
               <SkySphere3D />
+            </Suspense>
+          ) : view === 'solar3d' ? (
+            <Suspense fallback={<SceneFallback label="sistema solare" />}>
+              <SolarSystem3D />
             </Suspense>
           ) : (
             <ObservingDashboard />
