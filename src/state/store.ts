@@ -9,10 +9,14 @@ export type Location = {
 };
 
 export type TimeMode = 'real' | 'simulated';
+export type View = 'dashboard' | 'sky3d';
 
 type Store = {
   location: Location | null;
   setLocation: (loc: Location | null) => void;
+
+  view: View;
+  setView: (v: View) => void;
 
   timeMode: TimeMode;
   /** Epoch ms when in simulated mode. Ignored when mode === 'real'. */
@@ -36,6 +40,9 @@ export const useStore = create<Store>()(
     (set, get) => ({
       location: null,
       setLocation: (loc) => set({ location: loc }),
+
+      view: 'dashboard',
+      setView: (v) => set({ view: v }),
 
       timeMode: 'real',
       simulatedTime: Date.now(),
@@ -63,7 +70,7 @@ export const useStore = create<Store>()(
     {
       name: 'astri-store',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ location: s.location, speed: s.speed }),
+      partialize: (s) => ({ location: s.location, speed: s.speed, view: s.view }),
     },
   ),
 );
