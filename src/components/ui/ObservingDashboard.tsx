@@ -16,6 +16,7 @@ import {
 import { formatDate, formatDateTime, formatTime } from '@/core/time/format';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
+import { useWeatherForecast } from '@/state/useWeatherForecast';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
 import ObservingPlanner from './ObservingPlanner';
@@ -340,6 +341,7 @@ function EmptyDashboard() {
 export default function ObservingDashboard() {
   const location = useStore((s) => s.location);
   const displayed = useDisplayTime();
+  const weather = useWeatherForecast(location);
 
   const model = useMemo(() => {
     if (!location) return null;
@@ -386,6 +388,11 @@ export default function ObservingDashboard() {
           moon={moon}
           planets={planetTracks}
           planetInstruments={planetInstruments}
+          weather={
+            weather.status === 'ready'
+              ? { status: 'ready', samples: weather.forecast.samples }
+              : { status: weather.status }
+          }
         />
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
