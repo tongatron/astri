@@ -18,6 +18,7 @@ import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
+import ObservingPlanner from './ObservingPlanner';
 import UpcomingEvents from './UpcomingEvents';
 
 type SkyPoint = {
@@ -494,6 +495,8 @@ export default function ObservingDashboard() {
           <UpcomingEvents reference={displayed} />
           <MoonPhaseCalendar reference={displayed} />
         </section>
+
+        <ObservingPlanner />
       </div>
     </div>
   );

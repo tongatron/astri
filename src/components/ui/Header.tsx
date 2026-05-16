@@ -60,6 +60,12 @@ export default function Header() {
           <span className="rounded-full border border-night-800 bg-night-900/40 px-3 py-1 text-night-300">
             {formatDateTime(displayed)}
           </span>
+          <span
+            className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 font-mono text-[10px] text-night-500 sm:inline-block"
+            title={`Commit del ${new Date(__GIT_DATE__).toLocaleString('it-IT')}`}
+          >
+            {__GIT_HASH__} · {new Date(__GIT_DATE__).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' })}
+          </span>
         </div>
       </header>
       <LocationPicker open={pickerOpen} onClose={() => setPickerOpen(false)} />
