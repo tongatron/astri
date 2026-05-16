@@ -1,6 +1,7 @@
 import * as A from 'astronomy-engine';
 import { STARS } from '@/data/stars';
 import { CONSTELLATIONS } from '@/data/constellations';
+import { MESSIER, MESSIER_TYPE_COLOR } from '@/data/messier';
 import { equatorialToHorizontal, eclipticLongitudeToEquatorial } from '@/core/coords/equatorial';
 import { sunState } from './sun';
 import { moonState } from './moon';
@@ -11,6 +12,8 @@ export type SkyChartOptions = {
   showTime?: boolean;
   /** Compass heading in degrees (0=N). When set, that direction appears at bottom of chart. */
   compassHeading?: number;
+  /** Render Messier deep-sky objects up to this magnitude. Undefined = off. */
+  messierMagLimit?: number;
 };
 
 const PLANET_COLORS: Record<string, string> = {
@@ -192,6 +195,57 @@ export function drawSkyChart(
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText(star.name, x + dotR + 2, y - 2);
+    }
+  }
+
+  // ── Messier deep-sky objects ─────────────────────────────────────────────
+  if (opts.messierMagLimit !== undefined) {
+    const magLimit = opts.messierMagLimit;
+    for (const m of MESSIER) {
+      if (m.magnitude > magLimit) continue;
+      const { altitude, azimuth } = equatorialToHorizontal(
+        m.raHours,
+        m.decDeg,
+        at,
+        observer,
+      );
+      if (altitude < 0) continue;
+      const [x, y] = xy(altitude, azimuth);
+      if (Math.hypot(x - cx, y - cy) > R + 4) continue;
+      const color = MESSIER_TYPE_COLOR[m.type];
+      const size = Math.max(2.5, 5.5 - m.magnitude * 0.4);
+      // Symbol per type: circle (clusters/galaxy), square (nebula), diamond (PN/SNR)
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      if (m.type === 'NEB' || m.type === 'STR') {
+        ctx.rect(x - size, y - size, size * 2, size * 2);
+      } else if (m.type === 'PN' || m.type === 'SNR') {
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x + size, y);
+        ctx.lineTo(x, y + size);
+        ctx.lineTo(x - size, y);
+        ctx.closePath();
+      } else {
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+      if (m.type === 'GC' || m.type === 'OC') {
+        // small inner dot for clusters
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Label only for the most prominent (mag ≤ 5)
+      if (m.magnitude <= 5) {
+        const fs = Math.round(w * 0.013);
+        ctx.fillStyle = 'rgba(220,230,255,0.75)';
+        ctx.font = `${fs}px system-ui,sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(m.name ?? m.id, x, y - size - 2);
+      }
     }
   }
 
