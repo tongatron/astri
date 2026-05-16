@@ -56,6 +56,11 @@ function magToRadius(mag: number): number {
   return 4 - (clamped + 1.5) * (3.2 / 5);
 }
 
+export type SkyChartHitTest = {
+  /** Canvas-pixel positions of rendered Messier objects, for click hit-testing. */
+  messier: { id: string; x: number; y: number; r: number }[];
+};
+
 export function drawSkyChart(
   ctx: CanvasRenderingContext2D,
   at: Date,
@@ -63,7 +68,8 @@ export function drawSkyChart(
   w: number,
   h: number,
   opts: SkyChartOptions = {},
-): void {
+): SkyChartHitTest {
+  const messierMarks: { id: string; x: number; y: number; r: number }[] = [];
   const cx = w / 2;
   const cy = h / 2;
   const R = Math.min(cx, cy) * 0.88;
@@ -230,6 +236,7 @@ export function drawSkyChart(
         ctx.arc(x, y, size, 0, Math.PI * 2);
       }
       ctx.stroke();
+      messierMarks.push({ id: m.id, x, y, r: size });
       if (m.type === 'GC' || m.type === 'OC') {
         // small inner dot for clusters
         ctx.fillStyle = color;
@@ -387,4 +394,6 @@ export function drawSkyChart(
       cx, infoY,
     );
   }
+
+  return { messier: messierMarks };
 }

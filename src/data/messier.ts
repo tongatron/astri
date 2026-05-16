@@ -162,3 +162,36 @@ export const MESSIER_TYPE_COLOR: Record<MessierType, string> = {
   AST: '#94a3b8',
   STR: '#cbd5e1',
 };
+
+/** Strumento osservativo consigliato in funzione della magnitudine apparente. */
+export function messierInstrument(mag: number): string {
+  if (mag <= 5) return 'occhio nudo';
+  if (mag <= 7) return 'binocolo';
+  if (mag <= 9) return 'piccolo telescopio (60–100 mm)';
+  return 'telescopio (≥150 mm)';
+}
+
+/** Brevi descrizioni divulgative per gli oggetti più celebri. */
+export const MESSIER_NOTES: Record<string, string> = {
+  M1:  'Resto della supernova del 1054 osservata dagli astronomi cinesi.',
+  M8:  'Nebulosa a emissione nella Via Lattea estiva, vasta come la Luna.',
+  M13: 'Il più bell\'ammasso globulare boreale, già visibile a occhio nudo.',
+  M16: 'Contiene i celebri "Pilastri della Creazione" fotografati da Hubble.',
+  M17: 'Nebulosa Omega, regione di formazione stellare luminosa.',
+  M20: 'Trifida: nebulosa a emissione + riflessione divisa da bande oscure.',
+  M22: 'Tra i globulari più vicini, spettacolare con binocolo da Sud.',
+  M27: 'Manubrio: la prima nebulosa planetaria scoperta.',
+  M31: 'Galassia di Andromeda, la più grande del Gruppo Locale, 2.5 milioni a.l.',
+  M33: 'Galassia del Triangolo, fragile a occhio nudo da cielo scuro.',
+  M42: 'Grande Nebulosa di Orione, vivaio stellare visibile sotto la cintura.',
+  M44: 'Presepe: ammasso aperto noto già agli antichi.',
+  M45: 'Pleiadi: ammasso giovane, 7 stelle a occhio nudo.',
+  M51: 'Galassia Vortice, prima galassia con struttura a spirale riconosciuta.',
+  M57: 'Anello: piccolo cerchio fumoso, classico bersaglio da telescopio.',
+  M64: 'Galassia Occhio Nero, banda di polveri scure davanti al nucleo.',
+  M81: 'Galassia di Bode, spirale ben formata nell\'Orsa Maggiore.',
+  M82: 'Galassia Sigaro, starburst con vento galattico.',
+  M97: 'Gufo: planetaria con due "occhi" scuri.',
+  M101: 'Girandola: spirale face-on di grande estensione.',
+  M104: 'Sombrero: spettacolare banda di polveri in profilo.',
+};
