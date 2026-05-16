@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Canvas, type ThreeEvent } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard, Line } from '@react-three/drei';
+import GIF from 'gif.js';
+import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
+import { sunTrajectory } from '@/core/astronomy/sun';
 import { toObserver } from '@/core/astronomy/observer';
 import { sunState } from '@/core/astronomy/sun';
 import { moonState } from '@/core/astronomy/moon';
@@ -24,6 +28,24 @@ import {
 } from '@/core/astronomy/format';
 
 const SPHERE_R = 6;
+const GIF_W = 640;
+const GIF_H = 360;
+
+/** Lives inside Canvas — keeps a ref to a manual render+capture function. */
+function Capturer({
+  handleRef,
+}: {
+  handleRef: React.MutableRefObject<(() => string) | null>;
+}) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    handleRef.current = () => {
+      gl.render(scene, camera);
+      return gl.domElement.toDataURL('image/png');
+    };
+  });
+  return null;
+}
 const HORIZON_THICKNESS = 0.02;
 
 const CARDINALS: { label: string; azimuth: number }[] = [
@@ -430,10 +452,97 @@ function InfoPanel({
   );
 }
 
+type GifPhase = 'idle' | 'capturing' | 'encoding';
+
 export default function SkySphere3D() {
   const location = useStore((s) => s.location);
   const displayed = useDisplayTime();
   const [selection, setSelection] = useState<Selection>(null);
+  const captureRef = useRef<(() => string) | null>(null);
+  const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
+  const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
+
+  const startGif = useCallback(async () => {
+    if (!location || !captureRef.current) return;
+
+    const observer = toObserver(location);
+    const dayStart = new Date(displayed);
+    dayStart.setHours(0, 0, 0, 0);
+    const sunTrack = sunTrajectory(dayStart, observer, 30);
+    const nightFrames = sunTrack.filter((s) => s.altitude < -12).map((s) => s.t);
+
+    if (nightFrames.length === 0) {
+      alert('Nessuna oscurità astronomica in questa data.');
+      return;
+    }
+
+    // Pause playback + save state
+    const store = useStore.getState();
+    const savedMode = store.timeMode;
+    const savedTime = store.simulatedTime;
+    store.setIsPlaying(false);
+
+    setGifPhase('capturing');
+    setGifProgress({ frame: 0, total: nightFrames.length, encoding: 0 });
+
+    const dataURLs: string[] = [];
+    for (let i = 0; i < nightFrames.length; i++) {
+      flushSync(() => useStore.getState().setSimulatedTime(nightFrames[i].getTime()));
+      dataURLs.push(captureRef.current!());
+      setGifProgress({ frame: i + 1, total: nightFrames.length, encoding: 0 });
+      // yield to allow UI to update
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    // Restore time
+    if (savedMode === 'real') store.resetToNow();
+    else store.setSimulatedTime(savedTime);
+
+    // Encode
+    setGifPhase('encoding');
+
+    await new Promise<void>((resolve) => {
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: GIF_W,
+        height: GIF_H,
+        workerScript: gifWorkerUrl,
+      });
+
+      const offscreen = document.createElement('canvas');
+      offscreen.width = GIF_W;
+      offscreen.height = GIF_H;
+      const ctx = offscreen.getContext('2d')!;
+
+      let loaded = 0;
+      for (const url of dataURLs) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, GIF_W, GIF_H);
+          ctx.drawImage(img, 0, 0, GIF_W, GIF_H);
+          gif.addFrame(offscreen, { delay: 300, copy: true });
+          loaded++;
+          if (loaded === dataURLs.length) {
+            gif.on('progress', (p) =>
+              setGifProgress((prev) => ({ ...prev, encoding: Math.round(p * 100) })),
+            );
+            gif.on('finished', (blob) => {
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = `astri-notte-${location.name.toLowerCase().replace(/\s+/g, '-')}.gif`;
+              a.click();
+              URL.revokeObjectURL(a.href);
+              setGifPhase('idle');
+              resolve();
+            });
+            gif.render();
+          }
+        };
+        img.src = url;
+      }
+    });
+  }, [location, displayed]);
 
   const { bodies, observer } = useMemo(() => {
     if (!location) return { bodies: [], observer: null };
@@ -470,8 +579,10 @@ export default function SkySphere3D() {
     <div className="relative h-full w-full bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.9),rgba(2,6,23,1))]">
       <Canvas
         camera={{ position: [9, 4.5, 9], fov: 50 }}
+        gl={{ preserveDrawingBuffer: true }}
         onPointerMissed={() => setSelection(null)}
       >
+        <Capturer handleRef={captureRef} />
         <ambientLight intensity={0.6} />
         <HorizonRing />
         <CardinalLabels />
@@ -512,6 +623,55 @@ export default function SkySphere3D() {
         stars={skyStarsById}
         onClose={() => setSelection(null)}
       />
+      {/* GIF capture overlay */}
+      {gifPhase !== 'idle' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-night-950/70 backdrop-blur-sm">
+          <div className="rounded-xl border border-night-700 bg-night-950/90 px-8 py-6 text-center shadow-2xl">
+            {gifPhase === 'capturing' ? (
+              <>
+                <div className="text-sm font-semibold text-slate-100">Cattura frame</div>
+                <div className="mt-2 text-2xl font-bold text-emerald-300">
+                  {gifProgress.frame} / {gifProgress.total}
+                </div>
+                <div className="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-night-800">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${(gifProgress.frame / gifProgress.total) * 100}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-semibold text-slate-100">Codifica GIF</div>
+                <div className="mt-2 text-2xl font-bold text-sky-300">{gifProgress.encoding}%</div>
+                <div className="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-night-800">
+                  <div
+                    className="h-full rounded-full bg-sky-500 transition-all"
+                    style={{ width: `${gifProgress.encoding}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* GIF button */}
+      <div className="pointer-events-auto absolute bottom-4 right-4">
+        <button
+          onClick={startGif}
+          disabled={gifPhase !== 'idle' || !location}
+          className="flex items-center gap-2 rounded-lg border border-night-700 bg-night-950/80 px-3 py-2 text-xs font-medium text-slate-200 shadow-lg backdrop-blur transition hover:border-emerald-700 hover:bg-emerald-900/40 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Genera GIF animata della notte corrente"
+        >
+          <svg className="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.258a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+          </svg>
+          GIF notte
+        </button>
+      </div>
+
       <div className="pointer-events-none absolute right-3 top-3 max-w-[12rem] rounded-md border border-night-800/70 bg-night-950/70 px-2.5 py-1.5 text-[10px] leading-snug text-night-300">
         <div className="font-semibold text-slate-200">Legenda</div>
         <div className="mt-1 space-y-0.5">
