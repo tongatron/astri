@@ -65,6 +65,22 @@ export function planetState(
   };
 }
 
+export function planetTrajectory(
+  body: A.Body,
+  from: Date,
+  observer: A.Observer,
+  stepMin = 20,
+): { t: Date; altitude: number }[] {
+  const out: { t: Date; altitude: number }[] = [];
+  const stepMs = stepMin * 60_000;
+  for (let i = 0; i <= (24 * 60) / stepMin; i++) {
+    const t = new Date(from.getTime() + i * stepMs);
+    const equ = A.Equator(body, t, observer, true, true);
+    out.push({ t, altitude: A.Horizon(t, observer, equ.ra, equ.dec, 'normal').altitude });
+  }
+  return out;
+}
+
 export function planetStates(at: Date, observer: A.Observer): PlanetState[] {
   return PLANETS.map((planet) => planetState(planet, at, observer)).sort(
     (a, b) => {

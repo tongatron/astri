@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { moonState, moonTrajectory } from '@/core/astronomy/moon';
 import { toObserver } from '@/core/astronomy/observer';
-import { planetStates, type PlanetState } from '@/core/astronomy/planets';
+import { planetStates, planetTrajectory, type PlanetState } from '@/core/astronomy/planets';
 import { sunState, sunTrajectory } from '@/core/astronomy/sun';
 import {
   compassDirection,
@@ -19,7 +19,19 @@ import { useStore } from '@/state/store';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
 import ObservingPlanner from './ObservingPlanner';
+import TonightReport from './TonightReport';
 import UpcomingEvents from './UpcomingEvents';
+import * as A from 'astronomy-engine';
+
+const PLANET_META: { key: string; name: string; body: A.Body; color: string; instrument: string }[] = [
+  { key: 'mercury', name: 'Mercurio', body: A.Body.Mercury, color: '#94a3b8', instrument: 'occhio nudo' },
+  { key: 'venus',   name: 'Venere',   body: A.Body.Venus,   color: '#fde68a', instrument: 'occhio nudo' },
+  { key: 'mars',    name: 'Marte',    body: A.Body.Mars,    color: '#f87171', instrument: 'occhio nudo' },
+  { key: 'jupiter', name: 'Giove',    body: A.Body.Jupiter, color: '#fb923c', instrument: 'occhio nudo' },
+  { key: 'saturn',  name: 'Saturno',  body: A.Body.Saturn,  color: '#d4a574', instrument: 'occhio nudo' },
+  { key: 'uranus',  name: 'Urano',    body: A.Body.Uranus,  color: '#67e8f9', instrument: 'binocolo/telescopio' },
+  { key: 'neptune', name: 'Nettuno',  body: A.Body.Neptune, color: '#818cf8', instrument: 'binocolo/telescopio' },
+];
 
 type SkyPoint = {
   key: string;
@@ -340,13 +352,20 @@ export default function ObservingDashboard() {
     const moonTrack = moonTrajectory(dayStart, observer, 20);
     const moonWindow = nextBestWindow(moonTrack);
     const timeline = buildTimeline({ from: displayed, sun, moon, planets });
+    const planetTracks = PLANET_META.map((p) => ({
+      key: p.key,
+      name: p.name,
+      color: p.color,
+      track: planetTrajectory(p.body, dayStart, observer, 20),
+    }));
+    const planetInstruments = Object.fromEntries(PLANET_META.map((p) => [p.key, p.instrument]));
 
-    return { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart };
+    return { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments };
   }, [displayed, location]);
 
   if (!location || !model) return <EmptyDashboard />;
 
-  const { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart } = model;
+  const { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments } = model;
   const bestSun = Math.max(...sunTrack.map((p) => p.altitude));
   const bestMoon = Math.max(...moonTrack.map((p) => p.altitude));
   const isNight = sun.altitude < -6;
@@ -361,6 +380,14 @@ export default function ObservingDashboard() {
   return (
     <div className="h-full overflow-y-auto bg-[linear-gradient(180deg,rgba(7,9,28,0.3),rgba(7,18,15,0.55))]">
       <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 lg:px-6">
+        <TonightReport
+          sunTrack={sunTrack}
+          moonTrack={moonTrack}
+          moon={moon}
+          planets={planetTracks}
+          planetInstruments={planetInstruments}
+        />
+
         <section className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="min-h-[260px] rounded-lg border border-night-800/80 bg-[radial-gradient(circle_at_25%_20%,rgba(255,209,102,0.17),transparent_30%),linear-gradient(135deg,rgba(7,9,28,0.95),rgba(7,18,15,0.86))] p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -483,6 +510,7 @@ export default function ObservingDashboard() {
           dayStart={dayStart}
           sun={sunTrack}
           moon={moonTrack}
+          planets={planetTracks}
           now={displayed}
         />
 
