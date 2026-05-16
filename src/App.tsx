@@ -1,9 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import Header from './components/ui/Header';
 import ObservingDashboard from './components/ui/ObservingDashboard';
+import OnboardingModal from './components/ui/OnboardingModal';
 import SceneErrorBoundary from './components/ui/SceneErrorBoundary';
 import TimeControls from './components/ui/TimeControls';
 import { useStore } from './state/store';
+import { parseUrlState } from './state/urlState';
 
 const SkySphere3D = lazy(() => import('./components/scene3d/SkySphere3D'));
 const SolarSystem3D = lazy(() => import('./components/scene3d/SolarSystem3D'));
@@ -21,6 +23,18 @@ export default function App() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const backToDashboard = () => setView('dashboard');
+
+  useEffect(() => {
+    const parsed = parseUrlState(window.location.search);
+    if (!parsed.location && !parsed.view && !parsed.simulatedTime) return;
+    const s = useStore.getState();
+    if (parsed.location) s.setLocation(parsed.location);
+    if (parsed.view) s.setView(parsed.view);
+    if (parsed.simulatedTime) s.setSimulatedTime(parsed.simulatedTime);
+    // Strip params from address bar so reloads don't override later edits.
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', cleanUrl);
+  }, []);
   return (
     <div className="flex h-full flex-col">
       <Header />
@@ -50,6 +64,7 @@ export default function App() {
         </main>
       </div>
       <TimeControls />
+      <OnboardingModal />
     </div>
   );
 }

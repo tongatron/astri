@@ -2,14 +2,33 @@ import { useState } from 'react';
 import { useStore } from '@/state/store';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { formatDateTime } from '@/core/time/format';
+import { buildShareUrl } from '@/state/urlState';
 import LocationPicker from './LocationPicker';
 
 export default function Header() {
   const location = useStore((s) => s.location);
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
+  const timeMode = useStore((s) => s.timeMode);
+  const simulatedTime = useStore((s) => s.simulatedTime);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shareLabel, setShareLabel] = useState<'idle' | 'copied' | 'failed'>('idle');
   const displayed = useDisplayTime();
+
+  const onShare = async () => {
+    const url = buildShareUrl(window.location.href, {
+      location,
+      view,
+      simulatedTime: timeMode === 'simulated' ? simulatedTime : undefined,
+    });
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareLabel('copied');
+    } catch {
+      setShareLabel('failed');
+    }
+    setTimeout(() => setShareLabel('idle'), 2000);
+  };
 
   return (
     <>
@@ -61,6 +80,19 @@ export default function Header() {
           <span className="rounded-full border border-night-800 bg-night-900/40 px-3 py-1 text-night-300">
             {formatDateTime(displayed)}
           </span>
+          <button
+            onClick={onShare}
+            title="Copia link condivisibile con posizione, vista e tempo correnti"
+            className={`rounded-full border px-3 py-1 transition ${
+              shareLabel === 'copied'
+                ? 'border-emerald-500 bg-emerald-900/40 text-emerald-200'
+                : shareLabel === 'failed'
+                  ? 'border-rose-500 bg-rose-900/40 text-rose-200'
+                  : 'border-night-700 bg-night-900/60 text-night-300 hover:border-night-500 hover:bg-night-800 hover:text-slate-100'
+            }`}
+          >
+            {shareLabel === 'copied' ? '✓ Copiato' : shareLabel === 'failed' ? 'Errore' : 'Condividi'}
+          </button>
           <span
             className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 text-[10px] text-night-500 sm:inline-block"
           >
