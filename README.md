@@ -1,125 +1,102 @@
 # Astri
 
-Applicazione web interattiva per esplorare il cielo notturno, i movimenti di Sole e Luna, i pianeti e il sistema solare in 3D — calcolati in tempo reale dalla posizione dell'utente.
+Applicazione web interattiva per esplorare il cielo notturno dal proprio balcone. Calcola in tempo reale posizioni di Sole, Luna e pianeti dalla posizione dell'utente, risponde alla domanda concreta "quando e dove guardare stasera" e genera mappe e GIF condivisibili.
 
-## Obiettivo
+## Funzionalità
 
-Un'unica web app che risponda a domande come:
-- *Dove sono Sole e Luna in questo momento dalla mia posizione?*
-- *A che ora sorge la Luna stasera? In che fase è?*
-- *Quali pianeti sono visibili adesso e dove guardare?*
-- *Com'è fatta l'orbita di Marte rispetto alla Terra?*
+### Dashboard osservativa
+- **Posizioni istantanee** di Sole, Luna e 7 pianeti (altitudine, azimut, magnitudine)
+- **Mappa orizzonte locale** con tutti i corpi visibili in proiezione polare
+- **Grafico traiettoria** su 24 ore con toggle per ogni pianeta — linee colorate per Mercurio, Venere, Marte, Giove, Saturno, Urano, Nettuno
+- **Calendario fasi lunari** del mese
+- **Prossimi eventi planetari** (opposizioni, elongazioni massime) sui prossimi 12 mesi con date precise
 
-Senza dipendere da servizi esterni per i calcoli: tutto offline-capable nel browser.
+### "Questa notte" — risposta immediata
+Sezione in cima al dashboard che calcola la finestra di oscurità astronomica (sole < −12°) e mostra, per ogni corpo osservabile, la finestra oraria, la durata, il picco di altitudine e un punteggio qualità. Risponde a "cosa osservo stasera?" senza dover scorrere.
+
+### Pianificatore osservativo
+Seleziona un pianeta e un range di notti (14 / 30 / 60 giorni): tabella con ogni notte utile, orari finestra, picco, fase lunare e qualità (Ottima / Buona / Discreta). La notte migliore è evidenziata. Pulsante **"Aggiungi a calendario"** → export `.ics` con tutti gli eventi.
+
+### Sfera celeste 3D
+Vista interattiva (Three.js / React Three Fiber) con:
+- Stelle dal catalogo con dimensioni proporzionali alla magnitudine
+- Linee e nomi delle costellazioni
+- Equatore celeste, eclittica, meridiano locale
+- Sole, Luna, pianeti navigabili con click per info
+- Pulsante **"GIF notte"**: genera una GIF animata della notte astronomica corrente (tramonto → alba, frame ogni 30 min) con download automatico
+
+### Sistema solare 3D
+Vista eliocentrica con Sole al centro, orbite in scala e pianeti in movimento reale. Time scrubbing per osservare i moti planetari nel tempo.
+
+### Mappa 2D del cielo
+Carta stellare classica in **proiezione azimutale equidistante** (zenith al centro, orizzonte al bordo, Nord in alto) renderizzata su canvas 2D:
+- Stelle con glow per le più luminose
+- Linee costellazioni
+- Eclittica tratteggiata
+- Sole, Luna (con % illuminazione), pianeti con etichette
+- Griglia altitudine / azimut, cardinali
+- Pulsante **"GIF notte"**: genera una GIF 640×640 della notte — completamente CPU-side, più leggibile della versione 3D
+
+### Controllo del tempo
+Modalità reale (ticking ogni secondo) o simulata con pausa, scrubbing e velocità variabile (1× → 86400×/giorno per secondo).
+
+---
 
 ## Stack
 
-| Area | Scelta | Motivo |
-|---|---|---|
-| Framework | **React + Vite + TypeScript** | DX rapida, build veloce, ecosistema maturo |
-| 3D | **three.js + @react-three/fiber + drei** | Rendering 3D dichiarativo in React |
-| 2D / grafici | **D3** (selettivamente) | Diagrammi traiettoria Sole/Luna, grafici fase |
-| Calcoli astronomici | **astronomy-engine** | Posizioni precise (Sole, Luna, pianeti, eventi) — MIT, no dipendenze |
-| Stato globale | **Zustand** | Posizione utente, tempo simulato, layer attivi |
-| Stile | **Tailwind CSS** | UI rapida, dark mode out-of-the-box |
-| Mappe / luoghi | **Browser Geolocation API** + fallback ricerca via **Nominatim** (OpenStreetMap) | Niente API key |
-| Test | **Vitest** + **Playwright** | Unit + e2e |
-| Deploy | **Vercel** o **Netlify** | Static hosting, zero config |
+| Area | Libreria |
+|---|---|
+| Framework | React 18 + Vite + TypeScript |
+| 3D | three.js + @react-three/fiber + drei |
+| Calcoli astronomici | astronomy-engine (VSOP87, ELP2000) |
+| Stato | Zustand con persistenza localStorage |
+| Stile | Tailwind CSS v4 |
+| GIF | gif.js (worker-based encoder) |
+| Geolocalizzazione | Browser Geolocation API + Nominatim (OpenStreetMap) |
+| Test | Vitest |
 
-### Perché astronomy-engine
-
-- Implementa VSOP87, ELP2000, algoritmi Meeus → precisione arcsec
-- Calcola: posizioni equatoriali/orizzontali, rise/set/transit, fasi lunari, eclissi, elongazioni, stagioni
-- ~100KB, nessuna dipendenza, funziona in browser e Node
-- In alternativa valutata: *Stellarium Web Engine* (più completo ma WASM rigido), *NASA Horizons API* (richiede rete + rate limit)
+---
 
 ## Architettura
 
 ```
 src/
-├── core/                 # Logica pura, niente React
-│   ├── astronomy/        # Wrapper su astronomy-engine (Sun, Moon, Planets, Events)
-│   ├── coords/           # Conversioni equatoriali ↔ orizzontali ↔ schermo
-│   └── time/             # Time provider (reale, simulato, scrubbing)
-├── state/                # Store Zustand (location, time, layers, selection)
+├── core/
+│   ├── astronomy/        # Wrapper astronomy-engine: sun, moon, planets, events,
+│   │                     # observing-planner, sky-chart-draw, ics export
+│   ├── coords/           # Conversioni equatoriali ↔ orizzontali ↔ cartesiane
+│   ├── location/         # Geocoding via Nominatim
+│   └── time/             # Formattatori
+├── state/                # Store Zustand (location, timeMode, simulatedTime, view)
 ├── components/
-│   ├── scene3d/          # Canvas r3f, sfera celeste, sistema solare
-│   ├── skymap/           # Vista 2D del cielo (stereografica)
-│   ├── panels/           # Info Sole/Luna/pianeta, eventi, calendario
-│   └── ui/               # Controlli tempo, location picker, layer toggle
-├── data/                 # Catalogo stellare (Hipparcos sottoinsieme), costellazioni
-└── pages/                # Home, viste dedicate
+│   ├── scene3d/          # SkySphere3D, SolarSystem3D, SkyChart2D
+│   └── ui/               # Dashboard, TonightReport, ObservingPlanner,
+│                         # AltitudeChart, MoonPhaseCalendar, UpcomingEvents,
+│                         # LocationPicker, TimeControls, Header, Sidebar
+└── data/                 # Catalogo stellare (mag ≲ 3.5), linee costellazioni
 ```
 
-**Principio**: `core/` non importa nulla da React/three. Tutto puro e testabile. I componenti chiamano `core/` e renderizzano.
+**Principio**: `core/` non importa nulla da React. Tutto pure functions, testabili in isolamento.
 
-## Roadmap a tappe
+---
 
-Ogni tappa è una versione utilizzabile, non un work-in-progress.
+## Sviluppo
 
-### Tappa 0 — Bootstrap (1–2 giorni)
-- [ ] `npm create vite@latest astri -- --template react-ts`
-- [ ] Setup Tailwind, ESLint, Prettier, Vitest
-- [ ] Installa `astronomy-engine`, `three`, `@react-three/fiber`, `@react-three/drei`, `zustand`
-- [ ] Layout base con dark mode, header, sidebar
-- [ ] Deploy iniziale (anche solo "hello sky") su Vercel per testare CI
+```bash
+npm install
+npm run dev       # http://localhost:5173
+npm test          # Vitest
+npm run build     # build produzione
+```
 
-### Tappa 1 — Posizione e tempo (2–3 giorni)
-- [ ] Geolocation con permission flow + fallback ricerca città (Nominatim)
-- [ ] Persistenza località in localStorage
-- [ ] Time provider: ora reale, pausa, scrubbing (slider ±1 anno), step (minuto/ora/giorno)
-- [ ] Indicatore tempo + fuso orario in header
+La versione e la data dell'ultimo commit sono mostrate nell'header (iniettate da Vite al build time tramite `execSync`).
 
-### Tappa 2 — Sole e Luna (v1 funzionale) (1 settimana)
-- [ ] Pannello **Sole**: altitudine/azimut correnti, orario alba/tramonto/transito, durata giorno, declinazione
-- [ ] Pannello **Luna**: altitudine/azimut, alba/tramonto, fase (% illuminata + nome + icona), distanza, librazione
-- [ ] Grafico traiettoria giornaliera Sole e Luna (D3, altitudine vs ora)
-- [ ] Vista 2D orizzonte: cerchio dei 360°, posizioni Sole/Luna ora
-- [ ] Calendario fasi lunari del mese corrente
-- [ ] Test unitari su `core/astronomy/sun.ts` e `moon.ts` con date note (es. equinozi)
-
-### Tappa 3 — Pianeti (3–5 giorni)
-- [ ] Posizioni dei 7 pianeti visibili (più Plutone opzionale)
-- [ ] Quali sono sopra l'orizzonte *adesso* + altitudine/azimut
-- [ ] Magnitudine apparente, distanza, costellazione di sfondo
-- [ ] Eventi: massime elongazioni di Mercurio/Venere, opposizioni di Marte/Giove/Saturno
-
-### Tappa 4 — Sfera celeste 3D (1–2 settimane)
-- [ ] Canvas r3f a tutto schermo con sfera celeste navigabile
-- [ ] Catalogo stellare (sottoinsieme Hipparcos, ~5000 stelle fino a mag 6)
-- [ ] Linee costellazioni (IAU) con etichette
-- [ ] Equatore celeste, eclittica, meridiano locale
-- [ ] Sole, Luna, pianeti renderizzati con texture e dimensioni proporzionate
-- [ ] Modalità "punta verso": click su un oggetto → camera si orienta
-- [ ] Toggle: orizzonte locale (clipping sotto l'orizzonte) vs cielo completo
-
-### Tappa 5 — Sistema solare 3D (1 settimana)
-- [ ] Vista "out of body": Sole al centro, orbite dei pianeti in scala (con switch scala realistica/scala visibile)
-- [ ] Time scrubbing → pianeti si muovono lungo le orbite
-- [ ] Lune principali di Giove/Saturno
-- [ ] Click pianeta → camera segue, pannello info dedicato
-
-### Tappa 6 — Eventi e notifiche (3–5 giorni)
-- [ ] Calendario eventi prossimi 12 mesi: eclissi, congiunzioni strette, sciami meteorici (date fisse), solstizi/equinozi
-- [ ] Filtro per visibilità dalla località utente
-- [ ] Export ICS per calendario
-
-### Tappa 7 — Rifiniture (in corso)
-- [ ] PWA + offline: app installabile, dati catalogo cached
-- [ ] i18n (it/en)
-- [ ] Bussola/giroscopio su mobile (DeviceOrientation API) per modo "alza il telefono"
-- [ ] Accessibilità: contrasti, navigazione tastiera, ARIA labels
-- [ ] Condivisione: link con location+tempo encoded in URL
-
-## Decisioni aperte
-
-- **Catalogo stellare**: Hipparcos completo (~118k stelle, ~5MB) o sottoinsieme magnitudo 6 (~5k stelle, ~200KB)? → partire dal sottoinsieme, caricare il resto on-demand
-- **Coordinate equinozio**: J2000 (più semplice, errore ~minuto d'arco) o data corrente con precessione/nutazione (astronomy-engine lo fa)? → data corrente
-- **Modello atmosferico**: applicare rifrazione atmosferica alle altezze (rilevante per alba/tramonto)? → sì, è già in astronomy-engine
+---
 
 ## Riferimenti
 
-- [astronomy-engine docs](https://github.com/cosinekitty/astronomy)
-- *Astronomical Algorithms*, Jean Meeus — testo di riferimento
-- [Stellarium](https://stellarium.org/) — ispirazione UX
+- [astronomy-engine](https://github.com/cosinekitty/astronomy) — motore di calcolo
+- *Astronomical Algorithms*, Jean Meeus
+- [Stellarium](https://stellarium.org/) — ispirazione UX per la sfera 3D
 - [In-The-Sky.org](https://in-the-sky.org/) — ispirazione contenuti
+- [INAF – Osservatorio di Arcetri](http://www.arcetri.inaf.it) — ispirazione carta 2D
