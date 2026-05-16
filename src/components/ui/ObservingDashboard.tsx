@@ -378,7 +378,7 @@ export default function ObservingDashboard() {
   ].filter(Boolean);
 
   return (
-    <div className="h-full overflow-y-auto bg-[linear-gradient(180deg,rgba(7,9,28,0.3),rgba(7,18,15,0.55))]">
+    <div className="scrollbar-hidden h-full overflow-y-auto bg-[linear-gradient(180deg,rgba(7,9,28,0.3),rgba(7,18,15,0.55))]">
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-4 px-4 py-4 lg:px-8">
         <TonightReport
           sunTrack={sunTrack}

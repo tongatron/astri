@@ -26,6 +26,14 @@ body,
   height: 100%;
 }
 
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   background:
     radial-gradient(ellipse at top, rgba(56, 62, 124, 0.25), transparent 60%),
