@@ -7,6 +7,7 @@ import { useStore } from './state/store';
 
 const SkySphere3D = lazy(() => import('./components/scene3d/SkySphere3D'));
 const SolarSystem3D = lazy(() => import('./components/scene3d/SolarSystem3D'));
+const SkyChart2D = lazy(() => import('./components/scene3d/SkyChart2D'));
 
 function SceneFallback({ label }: { label: string }) {
   return (
@@ -31,6 +32,10 @@ export default function App() {
           ) : view === 'solar3d' ? (
             <Suspense fallback={<SceneFallback label="sistema solare" />}>
               <SolarSystem3D />
+            </Suspense>
+          ) : view === 'chart2d' ? (
+            <Suspense fallback={<SceneFallback label="mappa del cielo" />}>
+              <SkyChart2D />
             </Suspense>
           ) : (
             <ObservingDashboard />

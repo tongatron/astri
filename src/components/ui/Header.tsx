@@ -32,6 +32,7 @@ export default function Header() {
                 { value: 'dashboard', label: 'Dashboard' },
                 { value: 'sky3d', label: 'Sfera 3D' },
                 { value: 'solar3d', label: 'Sistema solare' },
+                { value: 'chart2d', label: 'Mappa 2D' },
               ] as const
             ).map((opt) => (
               <button

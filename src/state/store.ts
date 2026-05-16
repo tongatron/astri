@@ -9,7 +9,7 @@ export type Location = {
 };
 
 export type TimeMode = 'real' | 'simulated';
-export type View = 'dashboard' | 'sky3d' | 'solar3d';
+export type View = 'dashboard' | 'sky3d' | 'solar3d' | 'chart2d';
 
 type Store = {
   location: Location | null;
