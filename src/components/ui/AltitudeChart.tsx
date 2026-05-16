@@ -51,7 +51,7 @@ function buildPath(samples: Sample[], windowStart: Date): string {
     .join(' ');
 }
 
-export default function AltitudeChart({ dayStart, sun, moon, planets, now }: Props) {
+export default function AltitudeChart({ sun, moon, planets, now }: Props) {
   const defaultVisible = useMemo(
     () => new Set(planets.filter((p) => p.track.some((s) => s.altitude > 0)).map((p) => p.key)),
     [planets],
