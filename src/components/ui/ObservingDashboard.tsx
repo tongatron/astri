@@ -491,7 +491,7 @@ export default function ObservingDashboard() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-          <UpcomingEvents reference={displayed} />
+          <UpcomingEvents reference={displayed} latitude={location.lat} />
           <MoonPhaseCalendar reference={displayed} />
         </section>
       </div>
