@@ -25,11 +25,15 @@ export default function SkyChart2D() {
     if (!canvas || !location) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const observer = toObserver(location);
-    drawSkyChart(ctx, displayed, observer, CHART_SIZE, CHART_SIZE, {
-      locationName: location.name,
-      showTime: true,
-    });
+    try {
+      const observer = toObserver(location);
+      drawSkyChart(ctx, displayed, observer, CHART_SIZE, CHART_SIZE, {
+        locationName: location.name,
+        showTime: true,
+      });
+    } catch (err) {
+      console.error('[SkyChart2D] draw error:', err);
+    }
   }, [displayed, location]);
 
   const startGif = useCallback(async () => {

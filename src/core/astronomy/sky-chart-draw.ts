@@ -192,15 +192,12 @@ export function drawSkyChart(
     const opacity = p.altitude > 0 ? 1 : 0.25;
     const color = PLANET_COLORS[p.key] ?? '#a3e635';
     const dotR = Math.max(2.5, 5 - p.magnitude * 0.6);
-    // glow
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, dotR * 3);
-    glow.addColorStop(0, color.replace(')', `,${opacity * 0.4})`).replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', 'rgba('));
-    // simpler glow:
+    // soft glow
     ctx.beginPath();
     ctx.arc(x, y, dotR * 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,200,${opacity * 0.1})`;
+    ctx.fillStyle = `rgba(255,255,200,${opacity * 0.08})`;
     ctx.fill();
-    ctx.fillStyle = opacity < 1 ? `rgba(150,150,150,0.4)` : color;
+    ctx.fillStyle = opacity < 1 ? 'rgba(150,150,150,0.4)' : color;
     ctx.beginPath();
     ctx.arc(x, y, dotR, 0, Math.PI * 2);
     ctx.fill();
