@@ -379,7 +379,7 @@ export default function ObservingDashboard() {
 
   return (
     <div className="h-full overflow-y-auto bg-[linear-gradient(180deg,rgba(7,9,28,0.3),rgba(7,18,15,0.55))]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 lg:px-6">
+      <div className="mx-auto flex max-w-screen-2xl flex-col gap-4 px-4 py-4 lg:px-8">
         <TonightReport
           sunTrack={sunTrack}
           moonTrack={moonTrack}
@@ -388,7 +388,7 @@ export default function ObservingDashboard() {
           planetInstruments={planetInstruments}
         />
 
-        <section className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
+        <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
           <div className="min-h-[260px] rounded-lg border border-night-800/80 bg-[radial-gradient(circle_at_25%_20%,rgba(255,209,102,0.17),transparent_30%),linear-gradient(135deg,rgba(7,9,28,0.95),rgba(7,18,15,0.86))] p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -414,7 +414,7 @@ export default function ObservingDashboard() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <Stat label="Sole max oggi" value={formatAngle(bestSun)} />
               <Stat label="Luna max oggi" value={formatAngle(bestMoon)} />
               <Stat label="Pianeti ora" value={`${visiblePlanets.length} visibili`} />
@@ -448,8 +448,8 @@ export default function ObservingDashboard() {
           </section>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-1">
+        <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <BodyPanel
               title="Sole"
               subtitle="Posizione apparente e ritmo della giornata"
@@ -514,12 +514,12 @@ export default function ObservingDashboard() {
           now={displayed}
         />
 
-        <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
           <PlanetList planets={planets} />
           <Timeline events={timeline} />
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
           <UpcomingEvents reference={displayed} />
           <MoonPhaseCalendar reference={displayed} />
         </section>
