@@ -4,6 +4,7 @@ import ObservingDashboard from './components/ui/ObservingDashboard';
 import Sidebar from './components/ui/Sidebar';
 import TimeControls from './components/ui/TimeControls';
 import { useStore } from './state/store';
+import { useApplyShareUrlOnMount } from './state/shareUrl';
 
 const SkySphere3D = lazy(() => import('./components/scene3d/SkySphere3D'));
 const SolarSystem3D = lazy(() => import('./components/scene3d/SolarSystem3D'));
@@ -17,6 +18,7 @@ function SceneFallback({ label }: { label: string }) {
 }
 
 export default function App() {
+  useApplyShareUrlOnMount();
   const view = useStore((s) => s.view);
   return (
     <div className="flex h-full flex-col">

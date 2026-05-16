@@ -3,13 +3,27 @@ import { useStore } from '@/state/store';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { formatDateTime } from '@/core/time/format';
 import LocationPicker from './LocationPicker';
+import { buildShareUrl } from '@/state/shareUrl';
 
 export default function Header() {
   const location = useStore((s) => s.location);
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
   const displayed = useDisplayTime();
+
+  const handleShare = async () => {
+    const url = buildShareUrl(true);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied('ok');
+    } catch {
+      setShareCopied('fail');
+    } finally {
+      setTimeout(() => setShareCopied('idle'), 1800);
+    }
+  };
 
   return (
     <>
@@ -60,6 +74,17 @@ export default function Header() {
           <span className="rounded-full border border-night-800 bg-night-900/40 px-3 py-1 text-night-300">
             {formatDateTime(displayed)}
           </span>
+          <button
+            onClick={handleShare}
+            className="rounded-full border border-night-700 bg-night-900/60 px-3 py-1 transition hover:border-emerald-400/60 hover:bg-night-800"
+            title="Copia un link che riapre Astri con questa posizione, tempo e vista"
+          >
+            {shareCopied === 'ok'
+              ? '✓ Link copiato'
+              : shareCopied === 'fail'
+                ? 'Errore copia'
+                : 'Condividi'}
+          </button>
         </div>
       </header>
       <LocationPicker open={pickerOpen} onClose={() => setPickerOpen(false)} />

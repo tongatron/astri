@@ -15,6 +15,12 @@ import { useStore } from '@/state/store';
 import { STARS, type Star } from '@/data/stars';
 import { CONSTELLATIONS } from '@/data/constellations';
 import {
+  MESSIER,
+  deepSkyTypeColor,
+  deepSkyTypeLabel,
+  type DeepSkyObject,
+} from '@/data/messier';
+import {
   compassDirection,
   formatAngle,
   formatKm,
@@ -62,7 +68,13 @@ type SkyStar = Star & {
 type Selection =
   | { type: 'body'; key: string }
   | { type: 'star'; key: string }
+  | { type: 'deepsky'; key: string }
   | null;
+
+type SkyDeepSky = DeepSkyObject & {
+  altitude: number;
+  azimuth: number;
+};
 
 function altAzCircle(altitude: (azimuth: number) => number, segments = 96) {
   const points: [number, number, number][] = [];
@@ -256,6 +268,64 @@ function BodyMarker({
   );
 }
 
+function DeepSkyMarker({
+  obj,
+  onSelect,
+  highlighted,
+}: {
+  obj: SkyDeepSky;
+  onSelect: () => void;
+  highlighted: boolean;
+}) {
+  const above = obj.altitude > 0;
+  const p = horizontalToCartesian(obj.altitude, obj.azimuth, SPHERE_R * 0.997);
+  // Brighter (lower magnitude) → larger marker.
+  const mag = Math.max(1.5, Math.min(10, obj.magnitude));
+  const size = 0.16 - (mag - 1.5) * (0.09 / 8.5);
+  const color = deepSkyTypeColor(obj.type);
+  return (
+    <group position={[p.x, p.y, p.z]}>
+      <mesh
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+      >
+        <ringGeometry args={[size * 0.85, size, 24]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={above ? 0.9 : 0.25}
+          side={2}
+        />
+      </mesh>
+      <mesh>
+        <circleGeometry args={[size * 0.55, 18]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={above ? 0.35 : 0.1}
+        />
+      </mesh>
+      {highlighted && (
+        <Billboard>
+          <Text
+            position={[0, size + 0.12, 0]}
+            fontSize={0.18}
+            color="#f8fafc"
+            anchorX="center"
+            anchorY="bottom"
+            outlineWidth={0.01}
+            outlineColor="#020617"
+          >
+            {obj.commonName ?? obj.name}
+          </Text>
+        </Billboard>
+      )}
+    </group>
+  );
+}
+
 function ConstellationLines({
   starsById,
 }: {
@@ -370,11 +440,13 @@ function InfoPanel({
   selection,
   bodies,
   stars,
+  deepSky,
   onClose,
 }: {
   selection: Selection;
   bodies: SkyBody[];
   stars: Record<string, SkyStar>;
+  deepSky: Record<string, SkyDeepSky>;
   onClose: () => void;
 }) {
   if (!selection) return null;
@@ -389,7 +461,7 @@ function InfoPanel({
     title = b.label;
     subtitle = b.kind === 'sun' ? 'Stella del Sistema solare' : b.kind === 'moon' ? 'Satellite naturale' : 'Pianeta';
     lines = bodyDetailLines({ body: b, state: undefined as never });
-  } else {
+  } else if (selection.type === 'star') {
     const s = stars[selection.key];
     if (!s) return null;
     title = s.name;
@@ -399,6 +471,17 @@ function InfoPanel({
       `Altezza ${formatAngle(s.altitude)} · ${compassDirection(s.azimuth)} ${formatAngle(s.azimuth, 0)}`,
       `Coordinate equatoriali ${s.raHours.toFixed(2)}h, ${s.decDeg.toFixed(2)}°`,
       s.altitude > 0 ? 'Sopra l\'orizzonte' : 'Sotto l\'orizzonte',
+    ];
+  } else {
+    const d = deepSky[selection.key];
+    if (!d) return null;
+    title = d.commonName ? `${d.name} — ${d.commonName}` : d.name;
+    subtitle = `${deepSkyTypeLabel(d.type)} · ${d.constellation}`;
+    lines = [
+      `Magnitudine ${d.magnitude.toFixed(1)}`,
+      `Altezza ${formatAngle(d.altitude)} · ${compassDirection(d.azimuth)} ${formatAngle(d.azimuth, 0)}`,
+      `Coordinate equatoriali ${d.raHours.toFixed(2)}h, ${d.decDeg.toFixed(2)}°`,
+      d.altitude > 0 ? 'Sopra l\'orizzonte' : 'Sotto l\'orizzonte',
     ];
   }
 
@@ -434,6 +517,9 @@ export default function SkySphere3D() {
   const location = useStore((s) => s.location);
   const displayed = useDisplayTime();
   const [selection, setSelection] = useState<Selection>(null);
+  const [showDeepSky, setShowDeepSky] = useState(true);
+  const [showConstellations, setShowConstellations] = useState(true);
+  const [deepSkyMagLimit, setDeepSkyMagLimit] = useState(8);
 
   const { bodies, observer } = useMemo(() => {
     if (!location) return { bodies: [], observer: null };
@@ -456,6 +542,21 @@ export default function SkySphere3D() {
     return out;
   }, [displayed, observer]);
 
+  const deepSkyById = useMemo<Record<string, SkyDeepSky>>(() => {
+    if (!observer) return {};
+    const out: Record<string, SkyDeepSky> = {};
+    for (const obj of MESSIER) {
+      const { altitude, azimuth } = equatorialToHorizontal(
+        obj.raHours,
+        obj.decDeg,
+        displayed,
+        observer,
+      );
+      out[obj.id] = { ...obj, altitude, azimuth };
+    }
+    return out;
+  }, [displayed, observer]);
+
   if (!location || !observer) {
     return (
       <div className="grid h-full place-items-center text-center text-night-300">
@@ -465,6 +566,9 @@ export default function SkySphere3D() {
   }
 
   const stars = Object.values(skyStarsById);
+  const deepSkyVisible = showDeepSky
+    ? Object.values(deepSkyById).filter((d) => d.magnitude <= deepSkyMagLimit)
+    : [];
 
   return (
     <div className="relative h-full w-full bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.9),rgba(2,6,23,1))]">
@@ -478,7 +582,17 @@ export default function SkySphere3D() {
         <MeridianRing />
         <EquatorRing latitude={location.lat} />
         <EclipticRing date={displayed} observer={observer} />
-        <ConstellationLines starsById={skyStarsById} />
+        {showConstellations && <ConstellationLines starsById={skyStarsById} />}
+        {deepSkyVisible.map((obj) => (
+          <DeepSkyMarker
+            key={obj.id}
+            obj={obj}
+            highlighted={
+              selection?.type === 'deepsky' && selection.key === obj.id
+            }
+            onSelect={() => setSelection({ type: 'deepsky', key: obj.id })}
+          />
+        ))}
         {stars.map((star) => (
           <StarPoint
             key={star.id}
@@ -510,8 +624,50 @@ export default function SkySphere3D() {
         selection={selection}
         bodies={bodies}
         stars={skyStarsById}
+        deepSky={deepSkyById}
         onClose={() => setSelection(null)}
       />
+      <div className="pointer-events-auto absolute left-3 top-3 max-w-[14rem] rounded-md border border-night-800/70 bg-night-950/80 px-3 py-2 text-[11px] text-night-200 backdrop-blur">
+        <div className="font-semibold text-slate-100">Layer</div>
+        <label className="mt-1.5 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showConstellations}
+            onChange={(e) => setShowConstellations(e.target.checked)}
+            className="accent-emerald-400"
+          />
+          Linee costellazioni
+        </label>
+        <label className="mt-1 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showDeepSky}
+            onChange={(e) => setShowDeepSky(e.target.checked)}
+            className="accent-violet-400"
+          />
+          Catalogo Messier
+        </label>
+        {showDeepSky && (
+          <div className="mt-1.5">
+            <div className="flex justify-between text-[10px] text-night-300">
+              <span>Mag. limite</span>
+              <span className="text-slate-200">{deepSkyMagLimit.toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              min={3}
+              max={11}
+              step={0.5}
+              value={deepSkyMagLimit}
+              onChange={(e) => setDeepSkyMagLimit(parseFloat(e.target.value))}
+              className="mt-0.5 w-full accent-violet-400"
+            />
+            <div className="mt-0.5 text-[10px] text-night-400">
+              {deepSkyVisible.length} oggetti
+            </div>
+          </div>
+        )}
+      </div>
       <div className="pointer-events-none absolute right-3 top-3 max-w-[12rem] rounded-md border border-night-800/70 bg-night-950/70 px-2.5 py-1.5 text-[10px] leading-snug text-night-300">
         <div className="font-semibold text-slate-200">Legenda</div>
         <div className="mt-1 space-y-0.5">
