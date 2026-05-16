@@ -64,6 +64,8 @@ export default function SkyChart2D() {
   const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
   const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
   const compass = useCompass();
+  const [showMessier, setShowMessier] = useState(false);
+  const [messierMagLimit, setMessierMagLimit] = useState(7);
 
   // Draw on every time/location/compass change
   useEffect(() => {
@@ -77,11 +79,12 @@ export default function SkyChart2D() {
         locationName: location.name,
         showTime: true,
         compassHeading: compass.state === 'active' ? compass.heading : undefined,
+        messierMagLimit: showMessier ? messierMagLimit : undefined,
       });
     } catch (err) {
       console.error('[SkyChart2D] draw error:', err);
     }
-  }, [displayed, location, compass.state, compass.heading]);
+  }, [displayed, location, compass.state, compass.heading, showMessier, messierMagLimit]);
 
   const startGif = useCallback(async () => {
     if (!location) return;
@@ -221,6 +224,45 @@ export default function SkyChart2D() {
         </div>
       )}
 
+      {/* Messier panel */}
+      <div className="pointer-events-auto absolute bottom-4 left-4 flex flex-col gap-2">
+        <button
+          onClick={() => setShowMessier((v) => !v)}
+          className={[
+            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
+            showMessier
+              ? 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60'
+              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200',
+          ].join(' ')}
+          title="Mostra il catalogo Messier (M1–M110): nebulose, ammassi, galassie"
+        >
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+          </svg>
+          Messier {showMessier ? '(on)' : '(off)'}
+        </button>
+        {showMessier && (
+          <div className="rounded-lg border border-night-700 bg-night-950/85 px-3 py-2 text-[10px] text-night-300 shadow-lg backdrop-blur">
+            <label className="flex items-center gap-2">
+              <span>Mag ≤</span>
+              <input
+                type="range"
+                min={3}
+                max={10}
+                step={0.5}
+                value={messierMagLimit}
+                onChange={(e) => setMessierMagLimit(parseFloat(e.target.value))}
+                className="accent-fuchsia-400"
+              />
+              <span className="w-6 text-right font-semibold text-slate-200">
+                {messierMagLimit.toFixed(1)}
+              </span>
+            </label>
+          </div>
+        )}
+      </div>
+
       {/* Buttons */}
       <div className="pointer-events-auto absolute bottom-4 right-4 flex gap-2">
         {/* Compass toggle */}
@@ -276,6 +318,15 @@ export default function SkyChart2D() {
           <div><span className="text-orange-400">- -</span> eclittica</div>
           <div><span className="text-slate-300">●</span> stelle</div>
           <div><span className="text-sky-300">- -</span> linee costellazioni</div>
+          {showMessier && (
+            <>
+              <div className="mt-1 border-t border-night-800 pt-1 font-semibold text-slate-200">Messier</div>
+              <div><span className="text-amber-300">◌</span> ammasso aperto/globulare</div>
+              <div><span className="text-fuchsia-300">▢</span> nebulosa</div>
+              <div><span className="text-violet-300">◇</span> planetaria / SNR</div>
+              <div><span className="text-cyan-300">○</span> galassia</div>
+            </>
+          )}
         </div>
       </div>
     </div>

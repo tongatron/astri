@@ -44,15 +44,16 @@ export function sunState(at: Date, observer: A.Observer): SunState {
   };
 }
 
-/** Sample sun altitude every `stepMin` minutes over a 24h window starting at `from`. */
+/** Sample sun altitude every `stepMin` minutes over `hours` starting at `from`. */
 export function sunTrajectory(
   from: Date,
   observer: A.Observer,
   stepMin = 10,
+  hours = 24,
 ): { t: Date; altitude: number; azimuth: number }[] {
   const out: { t: Date; altitude: number; azimuth: number }[] = [];
   const stepMs = stepMin * 60_000;
-  for (let i = 0; i <= (24 * 60) / stepMin; i++) {
+  for (let i = 0; i <= (hours * 60) / stepMin; i++) {
     const t = new Date(from.getTime() + i * stepMs);
     const equ = A.Equator(A.Body.Sun, t, observer, true, true);
     const hor = A.Horizon(t, observer, equ.ra, equ.dec, 'normal');

@@ -2,6 +2,11 @@ import type { PlanetTrack } from './AltitudeChart';
 import type { MoonState } from '@/core/astronomy/moon';
 import { formatTime } from '@/core/time/format';
 import { formatAngle, formatPercent } from '@/core/astronomy/format';
+import {
+  cloudLabel,
+  meanCloudCover,
+  type WeatherSample,
+} from '@/core/weather/openmeteo';
 
 type Sample = { t: Date; altitude: number };
 
@@ -15,6 +20,7 @@ type BodyResult = {
   peakTime: Date | null;
   durationMin: number;
   score: number;
+  cloud: number | null;
   instrument: string;
   note: string;
 };
@@ -37,6 +43,7 @@ function computeBody(
   nightSamples: Sample[],
   moonIllum: number,
   instrument: string,
+  weather: WeatherSample[] | null,
 ): BodyResult {
   const nightTimes = new Set(nightSamples.map((s) => s.t.getTime()));
   const visible = track.filter(
@@ -48,25 +55,34 @@ function computeBody(
       key, name, color,
       windowStart: null, windowEnd: null,
       peakAlt: 0, peakTime: null, durationMin: 0, score: 0,
+      cloud: null,
       instrument, note: PLANET_NOTES[key] ?? '',
     };
   }
 
+  const windowStart = visible[0].t;
+  const windowEnd = visible[visible.length - 1].t;
   const best = visible.reduce((a, b) => (b.altitude > a.altitude ? b : a));
   const durationMin = visible.length * 20;
   const altScore = Math.min(50, (best.altitude / 90) * 50);
   const durScore = Math.min(30, (durationMin / 360) * 30);
   const moonPenalty = key === 'moon' ? 0 : moonIllum * 20;
-  const score = Math.round(altScore + durScore - moonPenalty);
+  const cloud =
+    weather && weather.length > 0
+      ? meanCloudCover(weather, windowStart, windowEnd)
+      : null;
+  const cloudPenalty = cloud === null ? 0 : (cloud / 100) * 30;
+  const score = Math.round(altScore + durScore - moonPenalty - cloudPenalty);
 
   return {
     key, name, color,
-    windowStart: visible[0].t,
-    windowEnd: visible[visible.length - 1].t,
+    windowStart,
+    windowEnd,
     peakAlt: best.altitude,
     peakTime: best.t,
     durationMin,
     score: Math.max(0, score),
+    cloud,
     instrument, note: PLANET_NOTES[key] ?? '',
   };
 }
@@ -86,15 +102,46 @@ function QualityPill({ score }: { score: number }) {
   return <span className="rounded-full bg-amber-900/50 px-2 py-0.5 text-[10px] font-semibold text-amber-300">Discreta</span>;
 }
 
+type WeatherStatus =
+  | { status: 'idle' | 'loading' | 'error'; samples?: undefined }
+  | { status: 'ready'; samples: WeatherSample[] };
+
 type Props = {
   sunTrack: Sample[];
   moonTrack: Sample[];
   moon: MoonState;
   planets: PlanetTrack[];
   planetInstruments: Record<string, string>;
+  weather?: WeatherStatus;
 };
 
-export default function TonightReport({ sunTrack, moonTrack, moon, planets, planetInstruments }: Props) {
+function CloudBadge({ cloud }: { cloud: number | null }) {
+  if (cloud === null) return null;
+  const tone =
+    cloud < 15
+      ? 'text-emerald-300'
+      : cloud < 40
+        ? 'text-sky-300'
+        : cloud < 70
+          ? 'text-amber-300'
+          : 'text-rose-300';
+  return (
+    <span className={`text-[10px] ${tone}`}>
+      ☁ {Math.round(cloud)}% · {cloudLabel(cloud)}
+    </span>
+  );
+}
+
+export default function TonightReport({
+  sunTrack,
+  moonTrack,
+  moon,
+  planets,
+  planetInstruments,
+  weather,
+}: Props) {
+  const weatherSamples =
+    weather && weather.status === 'ready' ? weather.samples : null;
   // Nautical night: sun < -12°
   const nightSamples = sunTrack.filter((s) => s.altitude < -12);
 
@@ -114,17 +161,21 @@ export default function TonightReport({ sunTrack, moonTrack, moon, planets, plan
   const nightDurMin = nightSamples.length * 20;
 
   const moonResult = computeBody(
-    'moon', 'Luna', '#e2e8f0', moonTrack, nightSamples, moon.illumination, 'occhio nudo',
+    'moon', 'Luna', '#e2e8f0', moonTrack, nightSamples, moon.illumination, 'occhio nudo', weatherSamples,
   );
 
   const results: BodyResult[] = [
     moonResult,
     ...planets.map((p) =>
-      computeBody(p.key, p.name, p.color, p.track, nightSamples, moon.illumination, planetInstruments[p.key] ?? 'occhio nudo'),
+      computeBody(p.key, p.name, p.color, p.track, nightSamples, moon.illumination, planetInstruments[p.key] ?? 'occhio nudo', weatherSamples),
     ),
   ]
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score);
+
+  const nightCloud = weatherSamples
+    ? meanCloudCover(weatherSamples, nightStart, nightEnd)
+    : null;
 
   return (
     <section className="rounded-lg border border-night-800/80 bg-[#07090f]/80 p-4">
@@ -141,6 +192,28 @@ export default function TonightReport({ sunTrack, moonTrack, moon, planets, plan
           <span>{formatDur(nightDurMin)}</span>
           <span className="text-night-600">·</span>
           <span>Luna {formatPercent(moon.illumination)}</span>
+          {nightCloud !== null && (
+            <>
+              <span className="text-night-600">·</span>
+              <span>
+                ☁ {Math.round(nightCloud)}% · {cloudLabel(nightCloud)}
+              </span>
+            </>
+          )}
+          {weather?.status === 'loading' && (
+            <>
+              <span className="text-night-600">·</span>
+              <span className="text-night-400">meteo…</span>
+            </>
+          )}
+          {weather?.status === 'error' && (
+            <>
+              <span className="text-night-600">·</span>
+              <span className="text-amber-400" title="Meteo non disponibile">
+                meteo n/d
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -184,6 +257,7 @@ export default function TonightReport({ sunTrack, moonTrack, moon, planets, plan
               {/* Quality + instrument */}
               <div className="mt-auto flex flex-col gap-1.5">
                 <QualityPill score={r.score} />
+                <CloudBadge cloud={r.cloud} />
                 <span className="text-[10px] text-night-400">{r.instrument}</span>
               </div>
 

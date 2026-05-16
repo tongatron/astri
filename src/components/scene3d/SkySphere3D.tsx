@@ -16,8 +16,10 @@ import {
 import { horizontalToCartesian } from '@/core/coords/horizon';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
+import { useISSPosition } from '@/state/useISSPosition';
 import { STARS, type Star } from '@/data/stars';
 import { CONSTELLATIONS } from '@/data/constellations';
+import { MESSIER, MESSIER_TYPE_COLOR } from '@/data/messier';
 import {
   compassDirection,
   formatAngle,
@@ -461,6 +463,7 @@ export default function SkySphere3D() {
   const captureRef = useRef<(() => string) | null>(null);
   const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
   const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
+  const [showMessier, setShowMessier] = useState(false);
 
   const startGif = useCallback(async () => {
     if (!location || !captureRef.current) return;
@@ -544,11 +547,55 @@ export default function SkySphere3D() {
     });
   }, [location, displayed]);
 
+  const iss = useISSPosition(location, displayed);
+
   const { bodies, observer } = useMemo(() => {
     if (!location) return { bodies: [], observer: null };
     const obs = toObserver(location);
-    return { bodies: buildBodies(displayed, obs).bodies, observer: obs };
-  }, [displayed, location]);
+    const built = buildBodies(displayed, obs).bodies;
+    if (iss && iss.altitude > -2) {
+      built.push({
+        key: 'iss',
+        label: 'ISS',
+        altitude: iss.altitude,
+        azimuth: iss.azimuth,
+        color: '#67e8f9',
+        size: 0.14,
+        kind: 'planet',
+        detail: [
+          `Distanza ${formatKm(iss.rangeKm)} · altezza orbita ${formatKm(iss.heightKm)}`,
+          `Sub-punto ${iss.subLat.toFixed(2)}°, ${iss.subLon.toFixed(2)}°`,
+          iss.altitude > 10
+            ? 'Sopra l\'orizzonte — possibile passaggio visibile'
+            : 'Sotto l\'orizzonte locale',
+        ],
+      });
+    }
+    return { bodies: built, observer: obs };
+  }, [displayed, location, iss]);
+
+  const messierPoints = useMemo(() => {
+    if (!observer || !showMessier) return [];
+    const out: { id: string; name: string; mag: number; color: string; pos: { x: number; y: number; z: number } }[] = [];
+    for (const m of MESSIER) {
+      if (m.magnitude > 7) continue;
+      const { altitude, azimuth } = equatorialToHorizontal(
+        m.raHours,
+        m.decDeg,
+        displayed,
+        observer,
+      );
+      if (altitude < 0) continue;
+      out.push({
+        id: m.id,
+        name: m.name ?? m.id,
+        mag: m.magnitude,
+        color: MESSIER_TYPE_COLOR[m.type],
+        pos: horizontalToCartesian(altitude, azimuth, SPHERE_R * 0.995),
+      });
+    }
+    return out;
+  }, [displayed, observer, showMessier]);
 
   const skyStarsById = useMemo<Record<string, SkyStar>>(() => {
     if (!observer) return {};
@@ -610,6 +657,12 @@ export default function SkySphere3D() {
             onSelect={() => setSelection({ type: 'body', key: body.key })}
           />
         ))}
+        {messierPoints.map((m) => (
+          <mesh key={m.id} position={[m.pos.x, m.pos.y, m.pos.z]}>
+            <sphereGeometry args={[Math.max(0.04, 0.10 - m.mag * 0.008), 8, 8]} />
+            <meshBasicMaterial color={m.color} transparent opacity={0.85} />
+          </mesh>
+        ))}
         <OrbitControls
           enablePan={false}
           minDistance={3}
@@ -656,8 +709,24 @@ export default function SkySphere3D() {
         </div>
       )}
 
-      {/* GIF button */}
-      <div className="pointer-events-auto absolute bottom-4 right-4">
+      {/* Bottom-right buttons */}
+      <div className="pointer-events-auto absolute bottom-4 right-4 flex gap-2">
+        <button
+          onClick={() => setShowMessier((v) => !v)}
+          className={[
+            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
+            showMessier
+              ? 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60'
+              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200',
+          ].join(' ')}
+          title="Mostra il catalogo Messier (oggetti del cielo profondo fino a mag 7)"
+        >
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+          </svg>
+          Messier
+        </button>
         <button
           onClick={startGif}
           disabled={gifPhase !== 'idle' || !location}

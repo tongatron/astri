@@ -25,8 +25,6 @@ const PAD_T = 14;
 const PAD_B = 26;
 const ALT_MIN = -30;
 const ALT_MAX = 90;
-const WINDOW_H = 24;      // total hours shown
-const BEFORE_H = 3;       // hours before "now" on the left
 
 function altitudeY(alt: number): number {
   const innerH = HEIGHT - PAD_T - PAD_B;
@@ -34,21 +32,38 @@ function altitudeY(alt: number): number {
   return PAD_T + (1 - Math.max(0, Math.min(1, norm))) * innerH;
 }
 
-function timeX(t: Date, windowStart: Date): number {
+function timeX(t: Date, windowStart: Date, windowMs: number): number {
   const innerW = WIDTH - PAD_L - PAD_R;
-  const hours = (t.getTime() - windowStart.getTime()) / 3_600_000;
-  return PAD_L + (hours / WINDOW_H) * innerW;
+  const f = (t.getTime() - windowStart.getTime()) / windowMs;
+  return PAD_L + f * innerW;
 }
 
-function buildPath(samples: Sample[], windowStart: Date): string {
+function buildPath(samples: Sample[], windowStart: Date, windowMs: number): string {
   if (samples.length === 0) return '';
   return samples
     .map((s, i) => {
-      const x = timeX(s.t, windowStart);
+      const x = timeX(s.t, windowStart, windowMs);
       const y = altitudeY(s.altitude);
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
+}
+
+/**
+ * Find the observing-night window from a sun altitude track: the first
+ * descending zero crossing (sunset) and the next ascending crossing
+ * (sunrise). Returns null at high latitudes where the sun never crosses.
+ */
+function findNightWindow(sun: Sample[]): { set: Date; rise: Date } | null {
+  let set: Date | null = null;
+  for (let i = 1; i < sun.length; i++) {
+    if (set === null && sun[i - 1].altitude >= 0 && sun[i].altitude < 0) {
+      set = sun[i].t;
+    } else if (set !== null && sun[i - 1].altitude < 0 && sun[i].altitude >= 0) {
+      return { set, rise: sun[i].t };
+    }
+  }
+  return null;
 }
 
 export default function AltitudeChart({ sun, moon, planets, now }: Props) {
@@ -61,31 +76,61 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
   const toggle = (key: string) =>
     setVisible((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
 
-  const { windowStart, sunPath, moonPath, horizonY, nowX, planetPaths, hourTicks } = useMemo(() => {
-    const wStart = new Date(now.getTime() - BEFORE_H * 3_600_000);
-    const wEnd   = new Date(wStart.getTime() + WINDOW_H * 3_600_000);
+  const {
+    windowStart,
+    windowMs,
+    sunPath,
+    moonPath,
+    horizonY,
+    nowX,
+    showNow,
+    planetPaths,
+    hourTicks,
+  } = useMemo(() => {
+    const night = findNightWindow(sun);
+    let wStart: Date;
+    let wEnd: Date;
+    if (night) {
+      // 30 min margins around sunset/sunrise so descents/rises are visible.
+      wStart = new Date(night.set.getTime() - 30 * 60_000);
+      wEnd = new Date(night.rise.getTime() + 30 * 60_000);
+    } else if (sun.length > 0) {
+      // Polar day/night fallback: show the second half of the available track.
+      wStart = sun[Math.floor(sun.length / 3)].t;
+      wEnd = sun[sun.length - 1].t;
+    } else {
+      wStart = now;
+      wEnd = new Date(now.getTime() + 12 * 3_600_000);
+    }
+    const wMs = wEnd.getTime() - wStart.getTime();
+    const lengthH = wMs / 3_600_000;
+    const tickEveryH = lengthH > 14 ? 2 : 1;
 
-    // Generate hour ticks at every 3h boundary within the window
     const firstTickMs =
-      Math.ceil(wStart.getTime() / (3 * 3_600_000)) * (3 * 3_600_000);
+      Math.ceil(wStart.getTime() / (tickEveryH * 3_600_000)) *
+      (tickEveryH * 3_600_000);
     const ticks: Date[] = [];
-    for (let ms = firstTickMs; ms <= wEnd.getTime(); ms += 3 * 3_600_000) {
+    for (let ms = firstTickMs; ms <= wEnd.getTime(); ms += tickEveryH * 3_600_000) {
       ticks.push(new Date(ms));
     }
 
-    const nowXVal = timeX(now, wStart);
+    const inside = now.getTime() >= wStart.getTime() && now.getTime() <= wEnd.getTime();
+    const nowXVal = timeX(now, wStart, wMs);
 
     return {
       windowStart: wStart,
-      sunPath: buildPath(sun, wStart),
-      moonPath: buildPath(moon, wStart),
+      windowMs: wMs,
+      sunPath: buildPath(sun, wStart, wMs),
+      moonPath: buildPath(moon, wStart, wMs),
       horizonY: altitudeY(0),
       nowX: nowXVal,
-      planetPaths: planets.map((p) => ({ key: p.key, path: buildPath(p.track, wStart) })),
+      showNow: inside,
+      planetPaths: planets.map((p) => ({ key: p.key, path: buildPath(p.track, wStart, wMs) })),
       hourTicks: ticks,
     };
   }, [sun, moon, planets, now]);
@@ -96,7 +141,7 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
   return (
     <section className="rounded-lg border border-night-800/80 bg-[#0a0f1a]/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-50">Traiettoria oggi</h3>
+        <h3 className="text-sm font-semibold text-slate-50">Traiettoria stanotte</h3>
         <div className="flex flex-wrap items-center gap-2 text-[10px]">
           <span className="flex items-center gap-1.5 text-night-300">
             <span className="inline-block size-2 rounded-full bg-sun" />
@@ -146,7 +191,7 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
 
         {/* Hour ticks */}
         {hourTicks.map((t) => {
-          const x = timeX(t, windowStart);
+          const x = timeX(t, windowStart, windowMs);
           const hh = t.getHours().toString().padStart(2, '0');
           return (
             <g key={t.getTime()}>
@@ -159,12 +204,14 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
         })}
 
         {/* Shaded "past" region (left of now) */}
-        <rect
-          x={PAD_L} y={PAD_T}
-          width={nowX - PAD_L}
-          height={HEIGHT - PAD_T - PAD_B}
-          fill="rgba(0,0,0,0.18)"
-        />
+        {showNow && (
+          <rect
+            x={PAD_L} y={PAD_T}
+            width={Math.max(0, nowX - PAD_L)}
+            height={HEIGHT - PAD_T - PAD_B}
+            fill="rgba(0,0,0,0.18)"
+          />
+        )}
 
         {/* Below-horizon fill */}
         <rect
@@ -184,16 +231,18 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
         <path d={moonPath} fill="none" stroke="#e2e8f0" strokeWidth={1.6} opacity={0.85} />
         <path d={sunPath}  fill="none" stroke="#fbbf24" strokeWidth={1.8} />
 
-        {/* Now line — always at BEFORE_H/WINDOW_H from left */}
-        <g>
-          <line
-            x1={nowX} x2={nowX} y1={PAD_T} y2={HEIGHT - PAD_B}
-            stroke="rgba(251,191,36,0.8)" strokeWidth={1.2} strokeDasharray="3,3"
-          />
-          <text x={nowX} y={PAD_T - 3} textAnchor="middle" className="fill-amber-200" fontSize={9}>
-            ora
-          </text>
-        </g>
+        {/* Now line — only when inside the night window */}
+        {showNow && (
+          <g>
+            <line
+              x1={nowX} x2={nowX} y1={PAD_T} y2={HEIGHT - PAD_B}
+              stroke="rgba(251,191,36,0.8)" strokeWidth={1.2} strokeDasharray="3,3"
+            />
+            <text x={nowX} y={PAD_T - 3} textAnchor="middle" className="fill-amber-200" fontSize={9}>
+              ora
+            </text>
+          </g>
+        )}
       </svg>
     </section>
   );
