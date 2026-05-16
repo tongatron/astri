@@ -57,59 +57,119 @@ src/
 
 Ogni tappa è una versione utilizzabile, non un work-in-progress.
 
-### Tappa 0 — Bootstrap (1–2 giorni)
-- [ ] `npm create vite@latest astri -- --template react-ts`
-- [ ] Setup Tailwind, ESLint, Prettier, Vitest
-- [ ] Installa `astronomy-engine`, `three`, `@react-three/fiber`, `@react-three/drei`, `zustand`
-- [ ] Layout base con dark mode, header, sidebar
-- [ ] Deploy iniziale (anche solo "hello sky") su Vercel per testare CI
+### ✅ Tappa 0 — Bootstrap
+- [x] Vite + React + TypeScript, Tailwind, ESLint, Prettier, Vitest
+- [x] Dipendenze: `astronomy-engine`, `three`, `@react-three/fiber`, `@react-three/drei`, `zustand`
+- [x] Layout dark mode, header, sidebar
 
-### Tappa 1 — Posizione e tempo (2–3 giorni)
-- [ ] Geolocation con permission flow + fallback ricerca città (Nominatim)
-- [ ] Persistenza località in localStorage
-- [ ] Time provider: ora reale, pausa, scrubbing (slider ±1 anno), step (minuto/ora/giorno)
-- [ ] Indicatore tempo + fuso orario in header
+### ✅ Tappa 1 — Posizione e tempo
+- [x] Geolocation + ricerca città (Nominatim) + localStorage
+- [x] Time provider: reale, simulato, scrubbing, step
+- [x] Indicatore tempo in header
 
-### Tappa 2 — Sole e Luna (v1 funzionale) (1 settimana)
-- [ ] Pannello **Sole**: altitudine/azimut correnti, orario alba/tramonto/transito, durata giorno, declinazione
-- [ ] Pannello **Luna**: altitudine/azimut, alba/tramonto, fase (% illuminata + nome + icona), distanza, librazione
-- [ ] Grafico traiettoria giornaliera Sole e Luna (D3, altitudine vs ora)
-- [ ] Vista 2D orizzonte: cerchio dei 360°, posizioni Sole/Luna ora
-- [ ] Calendario fasi lunari del mese corrente
-- [ ] Test unitari su `core/astronomy/sun.ts` e `moon.ts` con date note (es. equinozi)
+### ✅ Tappa 2 — Sole e Luna
+- [x] Pannelli Sole/Luna, traiettoria giornaliera, orizzonte 2D, calendario fasi
+- [x] Test unitari su `sun.ts` e `moon.ts`
 
-### Tappa 3 — Pianeti (3–5 giorni)
-- [ ] Posizioni dei 7 pianeti visibili (più Plutone opzionale)
-- [ ] Quali sono sopra l'orizzonte *adesso* + altitudine/azimut
-- [ ] Magnitudine apparente, distanza, costellazione di sfondo
-- [ ] Eventi: massime elongazioni di Mercurio/Venere, opposizioni di Marte/Giove/Saturno
+### ✅ Tappa 3 — Pianeti
+- [x] 7 pianeti con alt/az, magnitudine, distanza, elongazione, rise/set/transit
 
-### Tappa 4 — Sfera celeste 3D (1–2 settimane)
-- [ ] Canvas r3f a tutto schermo con sfera celeste navigabile
-- [ ] Catalogo stellare (sottoinsieme Hipparcos, ~5000 stelle fino a mag 6)
-- [ ] Linee costellazioni (IAU) con etichette
-- [ ] Equatore celeste, eclittica, meridiano locale
-- [ ] Sole, Luna, pianeti renderizzati con texture e dimensioni proporzionate
-- [ ] Modalità "punta verso": click su un oggetto → camera si orienta
-- [ ] Toggle: orizzonte locale (clipping sotto l'orizzonte) vs cielo completo
+### ✅ Tappa 4 — Sfera celeste 3D
+- [x] Canvas r3f, catalogo stelle (sottoinsieme), linee costellazioni IAU
+- [x] Equatore, eclittica, meridiano locale, orizzonte
+- [x] Click → info panel
 
-### Tappa 5 — Sistema solare 3D (1 settimana)
-- [ ] Vista "out of body": Sole al centro, orbite dei pianeti in scala (con switch scala realistica/scala visibile)
-- [ ] Time scrubbing → pianeti si muovono lungo le orbite
-- [ ] Lune principali di Giove/Saturno
-- [ ] Click pianeta → camera segue, pannello info dedicato
+### ✅ Tappa 5 — Sistema solare 3D
+- [x] Vista eliocentrica con orbite, time scrubbing, info pianeta
 
-### Tappa 6 — Eventi e notifiche (3–5 giorni)
-- [ ] Calendario eventi prossimi 12 mesi: eclissi, congiunzioni strette, sciami meteorici (date fisse), solstizi/equinozi
-- [ ] Filtro per visibilità dalla località utente
-- [ ] Export ICS per calendario
+### ✅ Tappa 6 — Eventi astronomici
+- [x] Pianeti (opposizioni, elongazioni), stagioni, eclissi lunari/solari, sciami meteorici
+- [x] Filtro per visibilità dalla latitudine utente
+- [x] Export ICS
 
-### Tappa 7 — Rifiniture (in corso)
-- [ ] PWA + offline: app installabile, dati catalogo cached
-- [ ] i18n (it/en)
-- [ ] Bussola/giroscopio su mobile (DeviceOrientation API) per modo "alza il telefono"
-- [ ] Accessibilità: contrasti, navigazione tastiera, ARIA labels
-- [ ] Condivisione: link con location+tempo encoded in URL
+### ✅ Catalogo Messier + Share URL
+- [x] 110 oggetti Messier J2000 come layer della sfera celeste
+- [x] Colore per tipo, dimensione per magnitudine, toggle e cursore mag. limite
+- [x] Share URL: location + view + tempo encoded in query string, pulsante "Condividi"
+
+---
+
+## 🎯 Prossimi passi
+
+Ordine consigliato di implementazione. Ogni voce è autonoma e rilasciabile.
+
+### Tappa 7a — PWA + offline (priorità alta)
+**Obiettivo**: app installabile su mobile/desktop, funziona senza rete dopo la prima visita.
+- [ ] Aggiungere `vite-plugin-pwa` con strategia `injectManifest`
+- [ ] Creare `public/manifest.webmanifest` (nome, icone 192/512, theme color `#020617`, display `standalone`)
+- [ ] Service worker: cache di app shell + asset statici (`workbox-precaching`)
+- [ ] Cache runtime per Nominatim (stale-while-revalidate, TTL 24h)
+- [ ] Banner "installa app" condizionale su `beforeinstallprompt`
+- [ ] Test offline manuale: chiudere la rete e ricaricare → l'app risponde
+
+### Tappa 7b — Accessibilità (priorità alta)
+**Obiettivo**: WCAG 2.1 AA, navigazione completa da tastiera.
+- [ ] Audit con `axe-core` (script `npm run a11y`) integrato in CI
+- [ ] ARIA labels su tutti i bottoni icon-only (Condividi, Esporta ICS, chiudi info, +/- tempo)
+- [ ] Focus ring visibile (Tailwind `focus-visible:ring-2 ring-amber-300`)
+- [ ] Navigazione tastiera nella scena 3D: tasti freccia per ruotare la camera, `Tab` per selezionare oggetti, `Enter` per aprire info
+- [ ] Skip-link "vai al contenuto principale"
+- [ ] Verifica contrasti AA su tutti i testi (specialmente `text-night-300/400` su sfondi scuri)
+
+### Tappa 7c — Pianificatore osservativo
+**Obiettivo**: rispondere a "quando e dove guardo X?" data una location.
+- [ ] Nuovo file `core/astronomy/planner.ts` con `bestObservingWindow(target, observer, days)`
+- [ ] Per ogni oggetto target (pianeta, Messier, evento): trova la finestra in cui l'altitudine massima è > 20° e il Sole è < -12° (crepuscolo nautico)
+- [ ] Tiene conto della fase lunare (penalizza notti con Luna piena vicina al target)
+- [ ] UI: nuova vista "Pianifica" con dropdown target + tabella delle 3 migliori finestre nelle prossime 4 settimane
+- [ ] Bottone "aggiungi all'ICS" per finestra selezionata
+
+### Tappa 7d — DeviceOrientation (modo "alza il telefono")
+**Obiettivo**: su mobile, la sfera celeste segue l'orientamento del dispositivo.
+- [ ] Hook `useDeviceOrientation()` che legge `alpha/beta/gamma` (con permission iOS 13+)
+- [ ] Toggle "Modalità AR" in Sfera 3D: disabilita OrbitControls e collega yaw/pitch della camera all'orientamento
+- [ ] Calibrazione iniziale (tocca per allineare nord magnetico/geografico)
+- [ ] Fallback grazioso quando l'API non è disponibile
+
+### Tappa 7e — i18n (it/en)
+**Obiettivo**: tutti i testi UI traducibili, default in base al browser.
+- [ ] Setup `@lingui/core` + macro o struttura più semplice basata su context
+- [ ] Estrazione di tutte le stringhe in `src/i18n/{it,en}.ts`
+- [ ] Toggle lingua in header
+- [ ] Tradurre nomi italiani (es. costellazioni: "Orsa Maggiore" ↔ "Ursa Major")
+
+### Tappa 8 — Catalogo deep-sky esteso
+**Obiettivo**: oltre i 110 Messier, oggetti notevoli del catalogo NGC/Caldwell.
+- [ ] Importare lista Caldwell (109 oggetti) in `src/data/caldwell.ts` con stesso schema di `messier.ts`
+- [ ] Importare oggetti NGC notevoli (top ~200 per magnitudine apparente) da fonte CC-BY
+- [ ] Filtro tipo nel pannello Layer della Sfera 3D
+- [ ] Pannello "lista oggetti visibili adesso" sopra l'orizzonte ordinata per altitudine
+
+### Tappa 9 — Lune di Giove e Saturno
+**Obiettivo**: vedere Galileiane e Titano come fanno gli astrofili.
+- [ ] In `core/astronomy/planets.ts` esporre `jupiterMoons(date)` con Io/Europa/Ganimede/Callisto via astronomy-engine `JupiterMoons`
+- [ ] Idem per Titano (calcolo orbitale semplificato)
+- [ ] Pannello pianeta esteso: mini-grafico configurazione delle lune al tempo corrente
+- [ ] Nella Sfera 3D, quando Giove è selezionato, mostra le lune come piccoli punti accanto
+
+### Tappa 10 — Comete e asteroidi notevoli
+**Obiettivo**: tracciare oggetti orbitali non standard.
+- [ ] Definire elementi orbitali (osculating) per Halley, Hale-Bopp, Tsuchinshan-ATLAS, Cerere, Vesta
+- [ ] Propagatore kepleriano in `core/astronomy/orbit.ts`
+- [ ] Layer dedicato nella Sfera 3D con magnitudine stimata
+
+### Tappa 11 — Forecast meteo
+**Obiettivo**: "stanotte il cielo sarà visibile?"
+- [ ] Integrare Open-Meteo (gratuita, no API key): cloud cover, visibilità, umidità per le prossime 24h
+- [ ] Componente `SkyConditions` nella dashboard con timeline grafica
+- [ ] Cache 1h per location
+
+### Tappa 12 — CI/CD e qualità
+**Obiettivo**: ogni PR è testata e ha preview.
+- [ ] GitHub Action: install + `npm run lint` + `npm test` + `npm run build`
+- [ ] Vercel/Netlify preview automatiche per le PR
+- [ ] Coverage badge in README (>80%)
+- [ ] E2E con Playwright: smoke test su tre viste principali
 
 ## Decisioni aperte
 
