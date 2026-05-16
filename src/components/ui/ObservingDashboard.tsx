@@ -347,18 +347,21 @@ export default function ObservingDashboard() {
     if (!location) return null;
     const observer = toObserver(location);
     const dayStart = localDayStart(displayed);
+    // Trajectories: start 6h before "now" and span 30h so we always capture
+    // the full observing night (sunset → next sunrise) around `displayed`.
+    const chartStart = new Date(displayed.getTime() - 6 * 3_600_000);
     const sun = sunState(displayed, observer);
     const moon = moonState(displayed, observer);
     const planets = planetStates(displayed, observer);
-    const sunTrack = sunTrajectory(dayStart, observer, 20);
-    const moonTrack = moonTrajectory(dayStart, observer, 20);
+    const sunTrack = sunTrajectory(chartStart, observer, 20, 30);
+    const moonTrack = moonTrajectory(chartStart, observer, 20, 30);
     const moonWindow = nextBestWindow(moonTrack);
     const timeline = buildTimeline({ from: displayed, sun, moon, planets });
     const planetTracks = PLANET_META.map((p) => ({
       key: p.key,
       name: p.name,
       color: p.color,
-      track: planetTrajectory(p.body, dayStart, observer, 20),
+      track: planetTrajectory(p.body, chartStart, observer, 20, 30),
     }));
     const planetInstruments = Object.fromEntries(PLANET_META.map((p) => [p.key, p.instrument]));
 
