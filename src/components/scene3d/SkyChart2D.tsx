@@ -3,9 +3,15 @@ import GIF from 'gif.js';
 import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
 import { toObserver } from '@/core/astronomy/observer';
 import { sunTrajectory } from '@/core/astronomy/sun';
-import { drawSkyChart } from '@/core/astronomy/sky-chart-draw';
+import { drawSkyChart, type SkyChartHitTest } from '@/core/astronomy/sky-chart-draw';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
+import {
+  MESSIER,
+  MESSIER_NOTES,
+  MESSIER_TYPE_LABEL,
+  messierInstrument,
+} from '@/data/messier';
 
 type CompassState = 'unsupported' | 'idle' | 'active';
 
@@ -66,6 +72,8 @@ export default function SkyChart2D() {
   const compass = useCompass();
   const [showMessier, setShowMessier] = useState(false);
   const [messierMagLimit, setMessierMagLimit] = useState(7);
+  const [selectedMessier, setSelectedMessier] = useState<string | null>(null);
+  const hitTestRef = useRef<SkyChartHitTest>({ messier: [] });
 
   // Draw on every time/location/compass change
   useEffect(() => {
@@ -75,7 +83,7 @@ export default function SkyChart2D() {
     if (!ctx) return;
     try {
       const observer = toObserver(location);
-      drawSkyChart(ctx, displayed, observer, CHART_SIZE, CHART_SIZE, {
+      hitTestRef.current = drawSkyChart(ctx, displayed, observer, CHART_SIZE, CHART_SIZE, {
         locationName: location.name,
         showTime: true,
         compassHeading: compass.state === 'active' ? compass.heading : undefined,
@@ -85,6 +93,30 @@ export default function SkyChart2D() {
       console.error('[SkyChart2D] draw error:', err);
     }
   }, [displayed, location, compass.state, compass.heading, showMessier, messierMagLimit]);
+
+  const onCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!showMessier) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CHART_SIZE / rect.width;
+    const scaleY = CHART_SIZE / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+    let best: { id: string; d: number } | null = null;
+    for (const mark of hitTestRef.current.messier) {
+      const d = Math.hypot(mark.x - px, mark.y - py);
+      const threshold = Math.max(mark.r + 6, 10);
+      if (d <= threshold && (!best || d < best.d)) {
+        best = { id: mark.id, d };
+      }
+    }
+    setSelectedMessier(best ? best.id : null);
+  }, [showMessier]);
+
+  const selectedObj = selectedMessier
+    ? MESSIER.find((m) => m.id === selectedMessier) ?? null
+    : null;
 
   const startGif = useCallback(async () => {
     if (!location) return;
@@ -179,9 +211,39 @@ export default function SkyChart2D() {
         ref={canvasRef}
         width={CHART_SIZE}
         height={CHART_SIZE}
-        className="max-h-full max-w-full"
+        onClick={onCanvasClick}
+        className={`max-h-full max-w-full ${showMessier ? 'cursor-crosshair' : ''}`}
         style={{ imageRendering: 'crisp-edges' }}
       />
+
+      {selectedObj && (
+        <div className="pointer-events-auto absolute top-4 left-1/2 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-night-700 bg-night-950/95 px-4 py-3 text-sm shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-slate-50">
+                {selectedObj.name ? `${selectedObj.id} · ${selectedObj.name}` : selectedObj.id}
+              </div>
+              <div className="mt-0.5 truncate text-xs text-night-300">
+                {MESSIER_TYPE_LABEL[selectedObj.type]} · {selectedObj.constellation}
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedMessier(null)}
+              className="rounded-full border border-night-700 px-2 py-0.5 text-xs text-night-300 transition hover:border-night-500 hover:text-slate-100"
+              aria-label="Chiudi"
+            >
+              ✕
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1 text-xs text-night-200">
+            <li>Magnitudine {selectedObj.magnitude.toFixed(1)} · {messierInstrument(selectedObj.magnitude)}</li>
+            <li>Coordinate equatoriali {selectedObj.raHours.toFixed(2)}h, {selectedObj.decDeg.toFixed(2)}°</li>
+            {MESSIER_NOTES[selectedObj.id] && (
+              <li className="pt-1 text-night-300">{MESSIER_NOTES[selectedObj.id]}</li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {/* Compass active — facing direction hint */}
       {compass.state === 'active' && (

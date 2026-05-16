@@ -19,7 +19,13 @@ import { useStore } from '@/state/store';
 import { useISSPosition } from '@/state/useISSPosition';
 import { STARS, type Star } from '@/data/stars';
 import { CONSTELLATIONS } from '@/data/constellations';
-import { MESSIER, MESSIER_TYPE_COLOR } from '@/data/messier';
+import {
+  MESSIER,
+  MESSIER_NOTES,
+  MESSIER_TYPE_COLOR,
+  MESSIER_TYPE_LABEL,
+  messierInstrument,
+} from '@/data/messier';
 import {
   compassDirection,
   formatAngle,
@@ -86,6 +92,7 @@ type SkyStar = Star & {
 type Selection =
   | { type: 'body'; key: string }
   | { type: 'star'; key: string }
+  | { type: 'messier'; key: string }
   | null;
 
 function altAzCircle(altitude: (azimuth: number) => number, segments = 96) {
@@ -413,6 +420,17 @@ function InfoPanel({
     title = b.label;
     subtitle = b.kind === 'sun' ? 'Stella del Sistema solare' : b.kind === 'moon' ? 'Satellite naturale' : 'Pianeta';
     lines = bodyDetailLines({ body: b, state: undefined as never });
+  } else if (selection.type === 'messier') {
+    const m = MESSIER.find((x) => x.id === selection.key);
+    if (!m) return null;
+    title = m.name ? `${m.id} · ${m.name}` : m.id;
+    subtitle = `${MESSIER_TYPE_LABEL[m.type]} · ${m.constellation}`;
+    lines = [
+      `Magnitudine ${m.magnitude.toFixed(1)} · ${messierInstrument(m.magnitude)}`,
+      `Coordinate equatoriali ${m.raHours.toFixed(2)}h, ${m.decDeg.toFixed(2)}°`,
+    ];
+    const note = MESSIER_NOTES[m.id];
+    if (note) lines.push(note);
   } else {
     const s = stars[selection.key];
     if (!s) return null;
@@ -657,12 +675,35 @@ export default function SkySphere3D() {
             onSelect={() => setSelection({ type: 'body', key: body.key })}
           />
         ))}
-        {messierPoints.map((m) => (
-          <mesh key={m.id} position={[m.pos.x, m.pos.y, m.pos.z]}>
-            <sphereGeometry args={[Math.max(0.04, 0.10 - m.mag * 0.008), 8, 8]} />
-            <meshBasicMaterial color={m.color} transparent opacity={0.85} />
-          </mesh>
-        ))}
+        {messierPoints.map((m) => {
+          const highlighted =
+            selection?.type === 'messier' && selection.key === m.id;
+          const baseSize = Math.max(0.05, 0.11 - m.mag * 0.008);
+          return (
+            <group key={m.id} position={[m.pos.x, m.pos.y, m.pos.z]}>
+              <mesh
+                onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+                  e.stopPropagation();
+                  setSelection({ type: 'messier', key: m.id });
+                }}
+              >
+                {/* enlarged transparent hit target for easy clicking */}
+                <sphereGeometry args={[baseSize * 2.2, 10, 10]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
+              <mesh>
+                <sphereGeometry args={[baseSize, 8, 8]} />
+                <meshBasicMaterial color={m.color} transparent opacity={0.9} />
+              </mesh>
+              {highlighted && (
+                <mesh>
+                  <ringGeometry args={[baseSize * 1.8, baseSize * 2.1, 24]} />
+                  <meshBasicMaterial color="#fde68a" transparent opacity={0.9} side={2} />
+                </mesh>
+              )}
+            </group>
+          );
+        })}
         <OrbitControls
           enablePan={false}
           minDistance={3}
