@@ -16,6 +16,7 @@ import {
 import { horizontalToCartesian } from '@/core/coords/horizon';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
+import { useISSPosition } from '@/state/useISSPosition';
 import { STARS, type Star } from '@/data/stars';
 import { CONSTELLATIONS } from '@/data/constellations';
 import {
@@ -544,11 +545,32 @@ export default function SkySphere3D() {
     });
   }, [location, displayed]);
 
+  const iss = useISSPosition(location, displayed);
+
   const { bodies, observer } = useMemo(() => {
     if (!location) return { bodies: [], observer: null };
     const obs = toObserver(location);
-    return { bodies: buildBodies(displayed, obs).bodies, observer: obs };
-  }, [displayed, location]);
+    const built = buildBodies(displayed, obs).bodies;
+    if (iss && iss.altitude > -2) {
+      built.push({
+        key: 'iss',
+        label: 'ISS',
+        altitude: iss.altitude,
+        azimuth: iss.azimuth,
+        color: '#67e8f9',
+        size: 0.14,
+        kind: 'planet',
+        detail: [
+          `Distanza ${formatKm(iss.rangeKm)} · altezza orbita ${formatKm(iss.heightKm)}`,
+          `Sub-punto ${iss.subLat.toFixed(2)}°, ${iss.subLon.toFixed(2)}°`,
+          iss.altitude > 10
+            ? 'Sopra l\'orizzonte — possibile passaggio visibile'
+            : 'Sotto l\'orizzonte locale',
+        ],
+      });
+    }
+    return { bodies: built, observer: obs };
+  }, [displayed, location, iss]);
 
   const skyStarsById = useMemo<Record<string, SkyStar>>(() => {
     if (!observer) return {};
