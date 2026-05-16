@@ -9,6 +9,8 @@ import { planetStates } from './planets';
 export type SkyChartOptions = {
   locationName?: string;
   showTime?: boolean;
+  /** Compass heading in degrees (0=N). When set, that direction appears at bottom of chart. */
+  compassHeading?: number;
 };
 
 const PLANET_COLORS: Record<string, string> = {
@@ -24,7 +26,9 @@ const PLANET_COLORS: Record<string, string> = {
 /**
  * Azimuthal equidistant projection.
  * altitude 90° → r=0 (zenith/center), altitude 0° → r=R (horizon edge).
- * North at top.
+ * East is on the left (sky-chart convention: looking up, not down).
+ * @param rotation - degrees to rotate chart clockwise; 0 = North at top.
+ *                   Set to compassHeading so the faced direction appears at bottom.
  */
 function altAzToXY(
   alt: number,
@@ -32,10 +36,15 @@ function altAzToXY(
   cx: number,
   cy: number,
   R: number,
+  rotation = 0,
 ): [number, number] {
   const r = ((90 - alt) / 90) * R;
-  const rad = (az * Math.PI) / 180;
-  return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)];
+  // Apply rotation: faced direction at bottom means top = heading+180.
+  // We offset azimuth so that (az = rotation) lands at the bottom (az+180 at top).
+  const adjusted = ((az - rotation + 180 + 720) % 360) - 180; // keep in [-180,180]
+  const rad = (adjusted * Math.PI) / 180;
+  // Flip X so East is on the left (sky-chart convention, not map convention).
+  return [cx - r * Math.sin(rad), cy - r * Math.cos(rad)];
 }
 
 function magToRadius(mag: number): number {
@@ -55,6 +64,8 @@ export function drawSkyChart(
   const cx = w / 2;
   const cy = h / 2;
   const R = Math.min(cx, cy) * 0.88;
+  const rot = opts.compassHeading ?? 0;
+  const xy = (alt: number, az: number) => altAzToXY(alt, az, cx, cy, R, rot);
 
   // ── Background ──────────────────────────────────────────────────────────
   ctx.clearRect(0, 0, w, h);
@@ -94,7 +105,7 @@ export function drawSkyChart(
 
   // Azimuth spokes every 30°
   for (let az = 0; az < 360; az += 30) {
-    const [x2, y2] = altAzToXY(0, az, cx, cy, R);
+    const [x2, y2] = xy(0, az);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(x2, y2);
@@ -120,8 +131,8 @@ export function drawSkyChart(
       const b = starPositions[bId];
       if (!a || !b) continue;
       if (a.altitude < -8 && b.altitude < -8) continue;
-      const [ax, ay] = altAzToXY(a.altitude, a.azimuth, cx, cy, R);
-      const [bx, by] = altAzToXY(b.altitude, b.azimuth, cx, cy, R);
+      const [ax, ay] = xy(a.altitude, a.azimuth);
+      const [bx, by] = xy(b.altitude, b.azimuth);
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(bx, by);
@@ -137,7 +148,7 @@ export function drawSkyChart(
   for (let lon = 0; lon <= 360; lon += 5) {
     const { raHours, decDeg } = eclipticLongitudeToEquatorial(lon);
     const { altitude, azimuth } = equatorialToHorizontal(raHours, decDeg, at, observer);
-    eclPts.push(altAzToXY(altitude, azimuth, cx, cy, R));
+    eclPts.push(xy(altitude, azimuth));
   }
   // draw ecliptic as segments (skip large jumps that wrap around)
   ctx.beginPath();
@@ -154,7 +165,7 @@ export function drawSkyChart(
   // ── Stars ────────────────────────────────────────────────────────────────
   for (const star of STARS) {
     const { altitude, azimuth } = starPositions[star.id];
-    const [x, y] = altAzToXY(altitude, azimuth, cx, cy, R);
+    const [x, y] = xy(altitude, azimuth);
     const r = Math.hypot(x - cx, y - cy);
     if (r > R + 2) continue;
     const opacity = altitude > 0 ? 1 : Math.max(0, 1 + altitude / 10) * 0.3;
@@ -187,7 +198,7 @@ export function drawSkyChart(
   // ── Planets ──────────────────────────────────────────────────────────────
   const planets = planetStates(at, observer);
   for (const p of planets) {
-    const [x, y] = altAzToXY(p.altitude, p.azimuth, cx, cy, R);
+    const [x, y] = xy(p.altitude, p.azimuth);
     if (Math.hypot(x - cx, y - cy) > R + 4) continue;
     const opacity = p.altitude > 0 ? 1 : 0.25;
     const color = PLANET_COLORS[p.key] ?? '#a3e635';
@@ -214,7 +225,7 @@ export function drawSkyChart(
   // ── Moon ─────────────────────────────────────────────────────────────────
   const moon = moonState(at, observer);
   {
-    const [x, y] = altAzToXY(moon.altitude, moon.azimuth, cx, cy, R);
+    const [x, y] = xy(moon.altitude, moon.azimuth);
     if (Math.hypot(x - cx, y - cy) <= R + 4) {
       const opacity = moon.altitude > 0 ? 1 : 0.3;
       const mR = Math.round(w * 0.022);
@@ -241,7 +252,7 @@ export function drawSkyChart(
   // ── Sun ──────────────────────────────────────────────────────────────────
   const sun = sunState(at, observer);
   {
-    const [x, y] = altAzToXY(sun.altitude, sun.azimuth, cx, cy, R);
+    const [x, y] = xy(sun.altitude, sun.azimuth);
     if (Math.hypot(x - cx, y - cy) <= R + 4) {
       const opacity = sun.altitude > -12 ? Math.max(0.15, 1 - Math.abs(Math.min(sun.altitude, 0)) / 12) : 0;
       if (opacity > 0) {
@@ -284,11 +295,14 @@ export function drawSkyChart(
   ];
   const cardFontSize = Math.round(w * 0.018);
   for (const { label, az } of cardinals) {
-    const rad = (az * Math.PI) / 180;
+    // Use xy() at altitude=0 to get rotated position, then extend to label offset.
+    const [hx, hy] = xy(0, az);
+    const dist = Math.hypot(hx - cx, hy - cy);
     const isMain = label.length === 1;
     const offset = R + (isMain ? 18 : 14);
-    const x = cx + offset * Math.sin(rad);
-    const y = cy - offset * Math.cos(rad);
+    const scale = dist > 0 ? offset / dist : 1;
+    const x = cx + (hx - cx) * scale;
+    const y = cy + (hy - cy) * scale;
     ctx.fillStyle = isMain ? '#fbbf24' : 'rgba(251,191,36,0.55)';
     ctx.font = `${isMain ? 'bold ' : ''}${isMain ? cardFontSize : cardFontSize - 2}px system-ui,sans-serif`;
     ctx.textAlign = 'center';

@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -17,9 +18,48 @@ function gitInfo() {
 
 export default defineConfig(({ command }) => {
   const { hash, isoDate } = gitInfo();
+  const base = command === 'build' ? (process.env.VITE_BASE ?? '/astri/') : '/';
   return {
-  base: command === 'build' ? (process.env.VITE_BASE ?? '/astri/') : '/',
-  plugins: [react(), tailwindcss()],
+  base,
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      base,
+      includeAssets: ['icon.svg'],
+      manifest: {
+        name: 'Astri — Cielo notturno',
+        short_name: 'Astri',
+        description: 'Esplora il cielo notturno dal tuo balcone: posizioni in tempo reale di Sole, Luna e pianeti.',
+        theme_color: '#060e2e',
+        background_color: '#020617',
+        display: 'standalone',
+        orientation: 'any',
+        start_url: base,
+        scope: base,
+        icons: [
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Cache app shell with StaleWhileRevalidate; long-lived assets CacheFirst.
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        runtimeCaching: [
+          {
+            // Nominatim geocoding — network first, fall back to cache
+            urlPattern: /^https:\/\/nominatim\.openstreetmap\.org\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'nominatim-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   define: {
     __GIT_HASH__: JSON.stringify(hash),
     __GIT_DATE__: JSON.stringify(isoDate),

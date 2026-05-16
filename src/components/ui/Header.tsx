@@ -62,10 +62,9 @@ export default function Header() {
             {formatDateTime(displayed)}
           </span>
           <span
-            className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 font-mono text-[10px] text-night-500 sm:inline-block"
-            title={`Commit del ${new Date(__GIT_DATE__).toLocaleString('it-IT')}`}
+            className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 text-[10px] text-night-500 sm:inline-block"
           >
-            {__GIT_HASH__} · {new Date(__GIT_DATE__).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' })}
+            V. {new Date(__GIT_DATE__).toLocaleString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
       </header>

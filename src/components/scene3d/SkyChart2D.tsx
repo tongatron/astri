@@ -7,6 +7,51 @@ import { drawSkyChart } from '@/core/astronomy/sky-chart-draw';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
 
+type CompassState = 'unsupported' | 'idle' | 'active';
+
+function useCompass(): { state: CompassState; heading: number; toggle: () => void } {
+  const [state, setState] = useState<CompassState>(() =>
+    typeof DeviceOrientationEvent !== 'undefined' ? 'idle' : 'unsupported',
+  );
+  const [heading, setHeading] = useState(0);
+
+  const handleOrientation = useCallback((e: DeviceOrientationEvent) => {
+    // iOS: webkitCompassHeading; Android: derive from alpha
+    const h =
+      (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading ??
+      (e.alpha != null ? (360 - e.alpha) % 360 : null);
+    if (h != null) setHeading(Math.round(h));
+  }, []);
+
+  const toggle = useCallback(async () => {
+    if (state === 'unsupported') return;
+    if (state === 'active') {
+      window.removeEventListener('deviceorientation', handleOrientation as EventListener);
+      setState('idle');
+      setHeading(0);
+      return;
+    }
+    // Request permission on iOS 13+
+    const DOEP = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<string>;
+    };
+    if (typeof DOEP.requestPermission === 'function') {
+      const perm = await DOEP.requestPermission();
+      if (perm !== 'granted') return;
+    }
+    window.addEventListener('deviceorientation', handleOrientation as EventListener, true);
+    setState('active');
+  }, [state, handleOrientation]);
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation as EventListener);
+    };
+  }, [handleOrientation]);
+
+  return { state, heading, toggle };
+}
+
 const CHART_SIZE = 700;
 const GIF_SIZE = 640;
 
@@ -18,8 +63,9 @@ export default function SkyChart2D() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
   const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
+  const compass = useCompass();
 
-  // Draw on every time/location change
+  // Draw on every time/location/compass change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !location) return;
@@ -30,11 +76,12 @@ export default function SkyChart2D() {
       drawSkyChart(ctx, displayed, observer, CHART_SIZE, CHART_SIZE, {
         locationName: location.name,
         showTime: true,
+        compassHeading: compass.state === 'active' ? compass.heading : undefined,
       });
     } catch (err) {
       console.error('[SkyChart2D] draw error:', err);
     }
-  }, [displayed, location]);
+  }, [displayed, location, compass.state, compass.heading]);
 
   const startGif = useCallback(async () => {
     if (!location) return;
@@ -133,6 +180,14 @@ export default function SkyChart2D() {
         style={{ imageRendering: 'crisp-edges' }}
       />
 
+      {/* Compass active — facing direction hint */}
+      {compass.state === 'active' && (
+        <div className="pointer-events-none absolute bottom-[4.5rem] left-1/2 -translate-x-1/2 rounded-md border border-sky-700/50 bg-night-950/80 px-3 py-1.5 text-center text-[11px] text-sky-300 backdrop-blur">
+          Stai guardando verso <span className="font-semibold">{compass.heading}°</span>
+          {' · '}tieni il telefono orizzontale puntato verso il cielo
+        </div>
+      )}
+
       {/* GIF overlay */}
       {gifPhase !== 'idle' && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-night-950/70 backdrop-blur-sm">
@@ -168,6 +223,37 @@ export default function SkyChart2D() {
 
       {/* Buttons */}
       <div className="pointer-events-auto absolute bottom-4 right-4 flex gap-2">
+        {/* Compass toggle */}
+        <button
+          onClick={compass.toggle}
+          disabled={compass.state === 'unsupported'}
+          title={
+            compass.state === 'unsupported'
+              ? 'Bussola non disponibile su questo dispositivo'
+              : compass.state === 'active'
+                ? `Bussola attiva — stai guardando verso ${compass.heading}°`
+                : 'Ruota la mappa in base alla direzione che stai guardando'
+          }
+          className={[
+            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
+            compass.state === 'active'
+              ? 'border-sky-500 bg-sky-900/50 text-sky-200 hover:bg-sky-900/70'
+              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-sky-700 hover:bg-sky-900/30 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40',
+          ].join(' ')}
+        >
+          {/* Compass icon */}
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
+            <path
+              d="M12 2v4M12 18v4M2 12h4M18 12h4"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+            <path d="M12 12l-3-5 3 2 3-2-3 5z" fill="currentColor" stroke="none" />
+          </svg>
+          {compass.state === 'active' ? `${compass.heading}° ` : ''}Bussola
+        </button>
+
         <button
           onClick={startGif}
           disabled={gifPhase !== 'idle'}
