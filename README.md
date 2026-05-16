@@ -29,12 +29,13 @@ Vista interattiva (Three.js / React Three Fiber) con:
 Vista eliocentrica con Sole al centro, orbite in scala e pianeti in movimento reale. Time scrubbing per osservare i moti planetari nel tempo.
 
 ### Mappa 2D del cielo
-Carta stellare classica in **proiezione azimutale equidistante** (zenith al centro, orizzonte al bordo, Nord in alto) renderizzata su canvas 2D:
+Carta stellare classica in **proiezione azimutale equidistante** (zenith al centro, orizzonte al bordo, Est a sinistra — convenzione sky-chart) renderizzata su canvas 2D:
 - Stelle con glow per le più luminose
 - Linee costellazioni
 - Eclittica tratteggiata
 - Sole, Luna (con % illuminazione), pianeti con etichette
 - Griglia altitudine / azimut, cardinali
+- Pulsante **"Bussola"**: ruota la mappa in tempo reale in base alla direzione del dispositivo (`DeviceOrientationEvent`) — la direzione verso cui sei girato appare in basso, come guardare su con il telefono in mano. Su iOS richiede conferma permesso; disabilitato su desktop.
 - Pulsante **"GIF notte"**: genera una GIF 640×640 della notte — completamente CPU-side, più leggibile della versione 3D
 
 ### Controllo del tempo
@@ -53,6 +54,7 @@ Modalità reale (ticking ogni secondo) o simulata con pausa, scrubbing e velocit
 | Stile | Tailwind CSS v4 |
 | GIF | gif.js (worker-based encoder) |
 | Geolocalizzazione | Browser Geolocation API + Nominatim (OpenStreetMap) |
+| PWA | vite-plugin-pwa + Workbox |
 | Test | Vitest |
 
 ---
@@ -86,10 +88,10 @@ src/
 npm install
 npm run dev       # http://localhost:5173
 npm test          # Vitest
-npm run build     # build produzione
+npm run build     # build produzione (genera anche service worker PWA)
 ```
 
-La versione e la data dell'ultimo commit sono mostrate nell'header (iniettate da Vite al build time tramite `execSync`).
+La versione nell'header mostra `V. 16 mag 2026, 19:30` — data e ora dell'ultimo commit, iniettate da Vite al build time tramite `execSync`.
 
 ---
 
