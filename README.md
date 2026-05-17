@@ -93,6 +93,15 @@ npm run build     # build produzione (genera anche service worker PWA)
 
 La versione nell'header mostra `V. 16 mag 2026, 19:30` — data e ora dell'ultimo commit, iniettate da Vite al build time tramite `execSync`.
 
+### Automazioni CI
+
+| Workflow | Trigger | Cosa fa |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | push su `main`, ogni PR | `tsc -b` + `eslint` + `vitest run` + `vite build` |
+| [`deploy.yml`](.github/workflows/deploy.yml) | push su `main` | Build e pubblica su GitHub Pages |
+| [`claude-review.yml`](.github/workflows/claude-review.yml) | ogni PR aperto/aggiornato | Review automatica via [Claude Code Action](https://github.com/anthropics/claude-code-action). Richiede secret `ANTHROPIC_API_KEY`. |
+| [`dependabot.yml`](.github/dependabot.yml) | settimanale (lunedì) | PR di aggiornamento npm raggruppate per famiglia (react, three-stack, testing, vite…); GitHub Actions aggiornate mensilmente. |
+
 ---
 
 ## Riferimenti
