@@ -18,6 +18,7 @@ import { useQuantizedDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
 import { useWeatherForecast } from '@/state/useWeatherForecast';
 import { estimateBortle } from '@/core/light-pollution/bortle';
+import { useAuroraForecast } from '@/state/useAuroraForecast';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
 import ObservingPlanner from './ObservingPlanner';
@@ -341,6 +342,7 @@ export default function ObservingDashboard() {
     () => (location ? estimateBortle(location.lat, location.lon) : null),
     [location],
   );
+  const aurora = useAuroraForecast();
 
   const model = useMemo(() => {
     if (!location) return null;
@@ -396,6 +398,9 @@ export default function ObservingDashboard() {
               : { status: weather.status }
           }
           bortle={bortle}
+          aurora={aurora}
+          lat={location.lat}
+          lon={location.lon}
         />
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">

@@ -10,6 +10,8 @@ import {
 } from '@/core/weather/openmeteo';
 import type { BortleEstimate } from '@/core/light-pollution/bortle';
 import { bortlePenalty } from '@/core/light-pollution/bortle';
+import type { AuroraForecast } from '@/core/aurora/swpc';
+import { auroraVisibility, kpLabel } from '@/core/aurora/swpc';
 
 type Sample = { t: Date; altitude: number };
 
@@ -124,6 +126,10 @@ type WeatherStatus =
   | { status: 'idle' | 'loading' | 'error'; samples?: undefined }
   | { status: 'ready'; samples: WeatherSample[] };
 
+type AuroraStatus =
+  | { status: 'idle' | 'loading' | 'error' }
+  | { status: 'ready'; data: AuroraForecast };
+
 type Props = {
   sunTrack: Sample[];
   moonTrack: Sample[];
@@ -132,6 +138,10 @@ type Props = {
   planetInstruments: Record<string, string>;
   weather?: WeatherStatus;
   bortle?: BortleEstimate | null;
+  aurora?: AuroraStatus;
+  /** Observer position for aurora visibility. */
+  lat?: number;
+  lon?: number;
 };
 
 function CloudBadge({ cloud }: { cloud: number | null }) {
@@ -159,6 +169,9 @@ export default function TonightReport({
   planetInstruments,
   weather,
   bortle,
+  aurora,
+  lat,
+  lon,
 }: Props) {
   const bortleCls = bortle?.class ?? null;
   const [bortleOpen, setBortleOpen] = useState(false);
@@ -174,6 +187,9 @@ export default function TonightReport({
         <p className="mt-3 text-sm text-night-300">
           Nessuna oscurità astronomica nelle prossime 24 ore (latitudine alta o estate).
         </p>
+        {aurora && lat !== undefined && lon !== undefined && (
+          <AuroraSection status={aurora} lat={lat} lon={lon} />
+        )}
       </section>
     );
   }
@@ -252,6 +268,10 @@ export default function TonightReport({
         </div>
       </div>
 
+      {aurora && lat !== undefined && lon !== undefined && (
+        <AuroraSection status={aurora} lat={lat} lon={lon} />
+      )}
+
       {results.length === 0 ? (
         <p className="mt-4 text-sm text-night-300">
           Nessun oggetto raggiunge i 10° durante la notte.
@@ -308,6 +328,90 @@ export default function TonightReport({
         <BortleLegend current={bortle.class} bortle={bortle} onClose={() => setBortleOpen(false)} />
       )}
     </section>
+  );
+}
+
+function AuroraSection({
+  status,
+  lat,
+  lon,
+}: {
+  status: AuroraStatus;
+  lat: number;
+  lon: number;
+}) {
+  if (status.status === 'loading') {
+    return (
+      <div className="mt-4 rounded-lg border border-night-800/70 bg-night-950/50 p-3 text-xs text-night-400">
+        Aurora boreale: caricamento dati NOAA…
+      </div>
+    );
+  }
+  if (status.status === 'error') {
+    return (
+      <div className="mt-4 rounded-lg border border-night-800/70 bg-night-950/50 p-3 text-xs text-amber-400">
+        Aurora boreale: dati NOAA non disponibili.
+      </div>
+    );
+  }
+  if (status.status !== 'ready') return null;
+
+  const { data } = status;
+  const peakKp = Math.max(
+    data.currentKp,
+    data.peak24h?.kp ?? 0,
+    data.peak72h?.kp ?? 0,
+  );
+  const visNow = auroraVisibility(data.currentKp, lat, lon);
+  const visPeak = auroraVisibility(peakKp, lat, lon);
+
+  // Hide the section entirely if even the 72h peak doesn't make aurora plausible
+  // from this location. Keeps the dashboard clean for users in southern latitudes.
+  if (visPeak.label === 'unlikely') return null;
+
+  const tone =
+    visNow.label === 'overhead'
+      ? 'border-emerald-700/60 bg-emerald-900/30 text-emerald-100'
+      : visNow.label === 'low-north'
+        ? 'border-sky-700/60 bg-sky-900/30 text-sky-100'
+        : visNow.label === 'horizon-glow'
+          ? 'border-amber-700/60 bg-amber-900/25 text-amber-100'
+          : 'border-night-800/70 bg-night-950/50 text-night-200';
+
+  return (
+    <div className={`mt-4 rounded-lg border p-3 ${tone}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🌌</span>
+          <h4 className="text-sm font-semibold">Aurora boreale</h4>
+        </div>
+        <div className="text-[11px] opacity-80">
+          Kp attuale <b>{data.currentKp.toFixed(1)}</b> · {kpLabel(data.currentKp)}
+        </div>
+      </div>
+      <p className="mt-1.5 text-xs leading-relaxed opacity-90">{visNow.description}</p>
+      {data.peak24h && data.peak24h.kp > data.currentKp + 0.5 && (
+        <p className="mt-1 text-[11px] opacity-75">
+          Picco previsto 24h: Kp <b>{data.peak24h.kp.toFixed(1)}</b> alle{' '}
+          {formatTime(data.peak24h.at)}.
+        </p>
+      )}
+      {data.peak72h &&
+        data.peak72h.kp > (data.peak24h?.kp ?? data.currentKp) + 0.5 && (
+          <p className="mt-1 text-[11px] opacity-75">
+            Picco 72h: Kp <b>{data.peak72h.kp.toFixed(1)}</b> il{' '}
+            {data.peak72h.at.toLocaleDateString('it-IT', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+            })}
+            .
+          </p>
+        )}
+      <p className="mt-1.5 text-[10px] opacity-60">
+        Geomag {visNow.observerGeomag.toFixed(0)}° · ovale a {visNow.ovalBoundary}° · dati NOAA SWPC
+      </p>
+    </div>
   );
 }
 

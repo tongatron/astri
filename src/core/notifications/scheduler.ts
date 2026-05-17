@@ -13,6 +13,7 @@ const MIN_FIRE_INTERVAL_MS: Record<NotificationCategory, number> = {
   issPass: 3 * 60 * 60_000, // every 3h
   moonPhase: 12 * 60 * 60_000, // twice per day max
   astroEvent: 24 * 60 * 60_000,
+  aurora: 6 * 60 * 60_000, // 4x per day max during storms
 };
 
 export function isNotificationSupported(): boolean {
@@ -99,6 +100,10 @@ export function buildCandidates(input: {
   moonPhaseName: string | null;
   moonIllumination: number;
   upcomingEventTitle: string | null;
+  aurora?: {
+    currentKp: number;
+    visibility: 'overhead' | 'low-north' | 'horizon-glow' | 'unlikely';
+  } | null;
 }): Candidate[] {
   const out: Candidate[] = [];
 
@@ -141,6 +146,25 @@ export function buildCandidates(input: {
         },
       });
     }
+  }
+
+  // Aurora visible from current location
+  if (input.aurora && input.aurora.visibility !== 'unlikely') {
+    const vis = input.aurora.visibility;
+    const where =
+      vis === 'overhead'
+        ? 'sopra la testa'
+        : vis === 'low-north'
+          ? 'bassa sull\'orizzonte nord'
+          : 'come bagliore sull\'orizzonte nord';
+    out.push({
+      category: 'aurora',
+      payload: {
+        category: 'aurora',
+        title: '🌌 Aurora boreale visibile',
+        body: `Da ${input.location.name}: Kp ${input.aurora.currentKp.toFixed(1)} — aurora ${where}.`,
+      },
+    });
   }
 
   // Upcoming astronomical event

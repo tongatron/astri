@@ -5,6 +5,7 @@ import { estimateBortle } from '@/core/light-pollution/bortle';
 import { moonState } from '@/core/astronomy/moon';
 import { toObserver } from '@/core/astronomy/observer';
 import { upcomingPlanetEvents } from '@/core/astronomy/events';
+import { fetchAuroraForecast, auroraVisibility } from '@/core/aurora/swpc';
 
 /**
  * Runs once per app open + on visibility-change back to "visible".
@@ -24,6 +25,16 @@ export function useNotificationScheduler() {
       const observer = toObserver(location);
       const moon = moonState(now, observer);
       const bortle = estimateBortle(location.lat, location.lon);
+
+      // Aurora forecast (best-effort, swallow network errors)
+      let auroraInput: Parameters<typeof buildCandidates>[0]['aurora'] = null;
+      try {
+        const f = await fetchAuroraForecast();
+        const vis = auroraVisibility(f.currentKp, location.lat, location.lon);
+        auroraInput = { currentKp: f.currentKp, visibility: vis.label };
+      } catch {
+        auroraInput = null;
+      }
 
       // Next astronomical event in the next ~7 days (one month lookahead capped)
       let nextEventTitle: string | null = null;
@@ -45,6 +56,7 @@ export function useNotificationScheduler() {
         moonPhaseName: moon.phaseName ?? null,
         moonIllumination: moon.illumination,
         upcomingEventTitle: nextEventTitle,
+        aurora: auroraInput,
       });
 
       for (const c of candidates) {

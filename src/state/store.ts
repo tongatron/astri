@@ -15,7 +15,8 @@ export type NotificationCategory =
   | 'bestNight'
   | 'issPass'
   | 'moonPhase'
-  | 'astroEvent';
+  | 'astroEvent'
+  | 'aurora';
 
 export type NotificationPrefs = {
   /** Master switch — false until user has explicitly enabled and granted permission. */
@@ -32,6 +33,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
     issPass: false,
     moonPhase: true,
     astroEvent: true,
+    aurora: true,
   },
   lastFired: {},
 };
