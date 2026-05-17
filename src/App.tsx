@@ -6,7 +6,6 @@ import SceneErrorBoundary from './components/ui/SceneErrorBoundary';
 import TimeControls from './components/ui/TimeControls';
 import { useStore } from './state/store';
 import { parseUrlState } from './state/urlState';
-import { useNotificationScheduler } from './state/useNotificationScheduler';
 
 const SkySphere3D = lazy(() => import('./components/scene3d/SkySphere3D'));
 const SolarSystem3D = lazy(() => import('./components/scene3d/SolarSystem3D'));
@@ -25,8 +24,6 @@ export default function App() {
   const setView = useStore((s) => s.setView);
   const nightRedMode = useStore((s) => s.nightRedMode);
   const backToDashboard = () => setView('dashboard');
-
-  useNotificationScheduler();
 
   useEffect(() => {
     const root = document.documentElement;
