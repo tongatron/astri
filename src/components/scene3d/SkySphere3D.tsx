@@ -483,6 +483,10 @@ export default function SkySphere3D() {
   const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
   const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
   const [showMessier, setShowMessier] = useState(false);
+  const [showConstellations, setShowConstellations] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showStars, setShowStars] = useState(true);
+  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [messierLegendOpen, setMessierLegendOpen] = useState(false);
 
   const startGif = useCallback(async () => {
@@ -653,11 +657,11 @@ export default function SkySphere3D() {
         <ambientLight intensity={0.6} />
         <HorizonRing />
         <CardinalLabels />
-        <MeridianRing />
-        <EquatorRing latitude={location.lat} />
-        <EclipticRing date={displayed} observer={observer} />
-        <ConstellationLines starsById={skyStarsById} />
-        {stars.map((star) => (
+        {showGrid && <MeridianRing />}
+        {showGrid && <EquatorRing latitude={location.lat} />}
+        {showGrid && <EclipticRing date={displayed} observer={observer} />}
+        {showConstellations && <ConstellationLines starsById={skyStarsById} />}
+        {showStars && stars.map((star) => (
           <StarPoint
             key={star.id}
             star={star}
@@ -752,32 +756,80 @@ export default function SkySphere3D() {
         </div>
       )}
 
+      {/* Bottom-left: Layer panel */}
+      <div className="pointer-events-auto absolute bottom-4 left-4 flex flex-col items-start gap-0">
+        {layerPanelOpen && (
+          <div className="mb-2 w-48 rounded-xl border border-night-700 bg-night-950/95 p-3 shadow-2xl backdrop-blur">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-night-400">
+              Layer
+            </div>
+            <div className="space-y-2">
+              {(
+                [
+                  { label: 'Stelle',        checked: showStars,         toggle: () => setShowStars((v) => !v),         accent: false },
+                  { label: 'Costellazioni', checked: showConstellations, toggle: () => setShowConstellations((v) => !v), accent: false },
+                  { label: 'Griglia',       checked: showGrid,           toggle: () => setShowGrid((v) => !v),           accent: false },
+                  { label: 'Messier',       checked: showMessier,        toggle: () => setShowMessier((v) => !v),        accent: true  },
+                ] satisfies { label: string; checked: boolean; toggle: () => void; accent: boolean }[]
+              ).map(({ label, checked, toggle, accent }) => (
+                <div key={label} className="flex items-center gap-2.5">
+                  <button
+                    onClick={toggle}
+                    className={`flex size-4 shrink-0 items-center justify-center rounded border transition ${
+                      checked ? 'border-sky-500 bg-sky-500' : 'border-night-600 bg-night-900 hover:border-sky-600'
+                    }`}
+                    aria-pressed={checked}
+                    aria-label={`${checked ? 'Nascondi' : 'Mostra'} ${label}`}
+                  >
+                    {checked && (
+                      <svg className="size-2.5 text-white" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    onClick={toggle}
+                    className={`flex-1 text-left text-xs font-medium ${accent ? 'text-fuchsia-300' : 'text-slate-200'}`}
+                  >
+                    {label}
+                  </button>
+                  {accent && (
+                    <button
+                      onClick={() => setMessierLegendOpen(true)}
+                      className="text-[10px] text-night-400 hover:text-fuchsia-300"
+                      title="Legenda Messier"
+                    >
+                      ?
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setLayerPanelOpen((v) => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition ${
+            layerPanelOpen
+              ? 'border-sky-600 bg-sky-900/40 text-sky-200'
+              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-sky-700 hover:bg-sky-900/30 hover:text-sky-200'
+          }`}
+          title="Gestisci i layer visibili"
+        >
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+          Layer
+          <svg className={`size-3 transition-transform ${layerPanelOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
       {/* Bottom-right buttons */}
       <div className="pointer-events-auto absolute bottom-4 right-4 flex gap-2">
-        <button
-          onClick={() => setShowMessier((v) => !v)}
-          className={[
-            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
-            showMessier
-              ? 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60'
-              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200',
-          ].join(' ')}
-          title="Mostra il catalogo Messier (oggetti del cielo profondo fino a mag 7)"
-        >
-          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
-            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-          </svg>
-          Messier
-        </button>
-        <button
-          onClick={() => setMessierLegendOpen(true)}
-          title="Legenda e spiegazioni del catalogo Messier"
-          aria-label="Apri legenda Messier"
-          className="flex size-9 items-center justify-center rounded-lg border border-night-700 bg-night-950/80 text-xs font-bold text-night-300 shadow-lg backdrop-blur transition hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200"
-        >
-          ?
-        </button>
         <button
           onClick={startGif}
           disabled={gifPhase !== 'idle' || !location}
