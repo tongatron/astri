@@ -18,6 +18,10 @@ type Store = {
   view: View;
   setView: (v: View) => void;
 
+  /** True once the user has completed the first-launch onboarding. */
+  hasOnboarded: boolean;
+  setHasOnboarded: (b: boolean) => void;
+
   timeMode: TimeMode;
   /** Epoch ms when in simulated mode. Ignored when mode === 'real'. */
   simulatedTime: number;
@@ -43,6 +47,9 @@ export const useStore = create<Store>()(
 
       view: 'dashboard',
       setView: (v) => set({ view: v }),
+
+      hasOnboarded: false,
+      setHasOnboarded: (b) => set({ hasOnboarded: b }),
 
       timeMode: 'real',
       simulatedTime: Date.now(),
@@ -70,7 +77,12 @@ export const useStore = create<Store>()(
     {
       name: 'astri-store',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ location: s.location, speed: s.speed, view: s.view }),
+      partialize: (s) => ({
+        location: s.location,
+        speed: s.speed,
+        view: s.view,
+        hasOnboarded: s.hasOnboarded,
+      }),
     },
   ),
 );
