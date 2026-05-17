@@ -34,13 +34,24 @@ export default function Header() {
 
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-night-800/60 bg-night-950/80 px-4 py-3 backdrop-blur sm:px-6">
-        <div className="flex items-center gap-3">
-          <div className="size-7 rounded-full bg-gradient-to-br from-sun to-moon shadow-[0_0_20px_rgba(255,209,102,0.5)]" />
-          <div>
-            <h1 className="text-base font-semibold tracking-tight">Astri</h1>
-            <p className="text-xs text-night-300">Cielo notturno interattivo</p>
+      <header className="flex flex-col gap-2 border-b border-night-800/60 bg-night-950/80 px-4 py-3 backdrop-blur sm:px-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-7 rounded-full bg-gradient-to-br from-sun to-moon shadow-[0_0_20px_rgba(255,209,102,0.5)]" />
+            <div>
+              <h1 className="text-base font-semibold tracking-tight">Astri</h1>
+              <p className="text-xs text-night-300">Cielo notturno interattivo</p>
+            </div>
           </div>
+          <a
+            href="https://tongatron.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full border border-sun/70 px-2.5 py-0.5 text-xs font-medium text-slate-100 transition hover:border-sun hover:bg-sun/10"
+          >
+            <span className="size-2 rounded-full bg-sun shadow-[0_0_5px_rgba(255,209,102,0.8)]" />
+            tongatron.org
+          </a>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div
@@ -111,6 +122,7 @@ export default function Header() {
           >
             {shareLabel === 'copied' ? '✓ Copiato' : shareLabel === 'failed' ? 'Errore' : 'Condividi'}
           </button>
+
           <span
             className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 text-[10px] text-night-500 sm:inline-block"
           >
