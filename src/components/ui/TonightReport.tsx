@@ -7,6 +7,8 @@ import {
   meanCloudCover,
   type WeatherSample,
 } from '@/core/weather/openmeteo';
+import type { BortleEstimate } from '@/core/light-pollution/bortle';
+import { bortlePenalty } from '@/core/light-pollution/bortle';
 
 type Sample = { t: Date; altitude: number };
 
@@ -44,6 +46,7 @@ function computeBody(
   moonIllum: number,
   instrument: string,
   weather: WeatherSample[] | null,
+  bortleCls: number | null,
 ): BodyResult {
   const nightTimes = new Set(nightSamples.map((s) => s.t.getTime()));
   const visible = track.filter(
@@ -72,7 +75,11 @@ function computeBody(
       ? meanCloudCover(weather, windowStart, windowEnd)
       : null;
   const cloudPenalty = cloud === null ? 0 : (cloud / 100) * 30;
-  const score = Math.round(altScore + durScore - moonPenalty - cloudPenalty);
+  // Light pollution penalty is dimmed for bright targets (Moon, Venus, Jupiter)
+  // which remain easily visible under heavy skyglow.
+  const lpAttenuation = key === 'moon' || key === 'venus' || key === 'jupiter' ? 0.2 : 1;
+  const lpPenalty = bortleCls === null ? 0 : bortlePenalty(bortleCls) * lpAttenuation;
+  const score = Math.round(altScore + durScore - moonPenalty - cloudPenalty - lpPenalty);
 
   return {
     key, name, color,
@@ -94,6 +101,13 @@ function formatDur(min: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function bortleChipTone(cls: number): string {
+  if (cls <= 2) return 'border-emerald-700/60 bg-emerald-900/40 text-emerald-200';
+  if (cls <= 4) return 'border-sky-700/60 bg-sky-900/40 text-sky-200';
+  if (cls <= 6) return 'border-amber-700/60 bg-amber-900/40 text-amber-200';
+  return 'border-rose-700/60 bg-rose-900/40 text-rose-200';
+}
+
 function QualityPill({ score }: { score: number }) {
   if (score >= 65)
     return <span className="rounded-full bg-emerald-900/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">Ottima</span>;
@@ -113,6 +127,7 @@ type Props = {
   planets: PlanetTrack[];
   planetInstruments: Record<string, string>;
   weather?: WeatherStatus;
+  bortle?: BortleEstimate | null;
 };
 
 function CloudBadge({ cloud }: { cloud: number | null }) {
@@ -139,7 +154,9 @@ export default function TonightReport({
   planets,
   planetInstruments,
   weather,
+  bortle,
 }: Props) {
+  const bortleCls = bortle?.class ?? null;
   const weatherSamples =
     weather && weather.status === 'ready' ? weather.samples : null;
   // Nautical night: sun < -12°
@@ -161,13 +178,13 @@ export default function TonightReport({
   const nightDurMin = nightSamples.length * 20;
 
   const moonResult = computeBody(
-    'moon', 'Luna', '#e2e8f0', moonTrack, nightSamples, moon.illumination, 'occhio nudo', weatherSamples,
+    'moon', 'Luna', '#e2e8f0', moonTrack, nightSamples, moon.illumination, 'occhio nudo', weatherSamples, bortleCls,
   );
 
   const results: BodyResult[] = [
     moonResult,
     ...planets.map((p) =>
-      computeBody(p.key, p.name, p.color, p.track, nightSamples, moon.illumination, planetInstruments[p.key] ?? 'occhio nudo', weatherSamples),
+      computeBody(p.key, p.name, p.color, p.track, nightSamples, moon.illumination, planetInstruments[p.key] ?? 'occhio nudo', weatherSamples, bortleCls),
     ),
   ]
     .filter((r) => r.score > 0)
@@ -197,6 +214,19 @@ export default function TonightReport({
               <span className="text-night-600">·</span>
               <span>
                 ☁ {Math.round(nightCloud)}% · {cloudLabel(nightCloud)}
+              </span>
+            </>
+          )}
+          {bortle && (
+            <>
+              <span className="text-night-600">·</span>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${bortleChipTone(bortle.class)}`}
+                title={`${bortle.label} — ${bortle.description}${
+                  bortle.nearest ? ` (${bortle.nearest.name} a ${bortle.nearest.km} km)` : ''
+                }`}
+              >
+                Bortle {bortle.class}
               </span>
             </>
           )}

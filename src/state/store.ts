@@ -11,6 +11,31 @@ export type Location = {
 export type TimeMode = 'real' | 'simulated';
 export type View = 'dashboard' | 'sky3d' | 'solar3d' | 'chart2d';
 
+export type NotificationCategory =
+  | 'bestNight'
+  | 'issPass'
+  | 'moonPhase'
+  | 'astroEvent';
+
+export type NotificationPrefs = {
+  /** Master switch — false until user has explicitly enabled and granted permission. */
+  enabled: boolean;
+  categories: Record<NotificationCategory, boolean>;
+  /** Per-category last-fired timestamp (ms epoch), used to avoid spamming. */
+  lastFired: Partial<Record<NotificationCategory, number>>;
+};
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  enabled: false,
+  categories: {
+    bestNight: true,
+    issPass: false,
+    moonPhase: true,
+    astroEvent: true,
+  },
+  lastFired: {},
+};
+
 type Store = {
   location: Location | null;
   setLocation: (loc: Location | null) => void;
@@ -41,6 +66,11 @@ type Store = {
   step: (deltaMs: number) => void;
   /** Back to real-time. */
   resetToNow: () => void;
+
+  notifications: NotificationPrefs;
+  setNotificationsEnabled: (b: boolean) => void;
+  setNotificationCategory: (c: NotificationCategory, b: boolean) => void;
+  markNotificationFired: (c: NotificationCategory, at: number) => void;
 };
 
 export const useStore = create<Store>()(
@@ -80,6 +110,24 @@ export const useStore = create<Store>()(
 
       resetToNow: () =>
         set({ timeMode: 'real', simulatedTime: Date.now(), isPlaying: false }),
+
+      notifications: DEFAULT_NOTIFICATION_PREFS,
+      setNotificationsEnabled: (b) =>
+        set((s) => ({ notifications: { ...s.notifications, enabled: b } })),
+      setNotificationCategory: (c, b) =>
+        set((s) => ({
+          notifications: {
+            ...s.notifications,
+            categories: { ...s.notifications.categories, [c]: b },
+          },
+        })),
+      markNotificationFired: (c, at) =>
+        set((s) => ({
+          notifications: {
+            ...s.notifications,
+            lastFired: { ...s.notifications.lastFired, [c]: at },
+          },
+        })),
     }),
     {
       name: 'astri-store',
@@ -93,6 +141,7 @@ export const useStore = create<Store>()(
         simulatedTime: s.simulatedTime,
         isPlaying: s.isPlaying,
         nightRedMode: s.nightRedMode,
+        notifications: s.notifications,
       }),
     },
   ),

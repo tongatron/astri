@@ -17,6 +17,7 @@ import { formatDate, formatDateTime, formatTime } from '@/core/time/format';
 import { useQuantizedDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
 import { useWeatherForecast } from '@/state/useWeatherForecast';
+import { estimateBortle } from '@/core/light-pollution/bortle';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
 import ObservingPlanner from './ObservingPlanner';
@@ -336,6 +337,10 @@ export default function ObservingDashboard() {
   // refreshed every 15 minutes. The header clock still ticks every second.
   const displayed = useQuantizedDisplayTime(15 * 60_000);
   const weather = useWeatherForecast(location);
+  const bortle = useMemo(
+    () => (location ? estimateBortle(location.lat, location.lon) : null),
+    [location],
+  );
 
   const model = useMemo(() => {
     if (!location) return null;
@@ -390,6 +395,7 @@ export default function ObservingDashboard() {
               ? { status: 'ready', samples: weather.forecast.samples }
               : { status: weather.status }
           }
+          bortle={bortle}
         />
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
