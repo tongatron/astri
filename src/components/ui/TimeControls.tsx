@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useStore } from '@/state/store';
 import { useDisplayTime } from '@/state/useDisplayTime';
 import { formatDateTime, formatOffset, formatSpeed } from '@/core/time/format';
@@ -39,6 +40,49 @@ export default function TimeControls() {
     setIsPlaying(!isPlaying);
   };
 
+  // Keyboard shortcuts:
+  //   ← / →            ± 1 hour
+  //   Shift + ← / →    ± 1 day
+  //   Space            play / pause
+  //   N                back to real time
+  // Ignored while typing in an input/textarea/contenteditable.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (target.isContentEditable) return;
+      }
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          step(e.shiftKey ? -86_400_000 : -3_600_000);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          step(e.shiftKey ? 86_400_000 : 3_600_000);
+          break;
+        case ' ':
+        case 'Spacebar':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'n':
+        case 'N':
+          e.preventDefault();
+          resetToNow();
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // togglePlay closes over `displayed`/`isPlaying`/`timeMode`; we want a
+    // fresh handler on each render so it reads the current store values.
+  });
+
   return (
     <div className="border-t border-night-800/60 bg-night-950/80 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-col gap-2">
@@ -56,6 +100,7 @@ export default function TimeControls() {
           <button
             onClick={resetToNow}
             disabled={timeMode === 'real'}
+            title="Torna a ora reale (N)"
             className="rounded-md border border-night-700 px-2 py-1 text-[11px] transition hover:bg-night-800 disabled:opacity-40 disabled:hover:bg-transparent"
           >
             Ora reale
@@ -67,6 +112,7 @@ export default function TimeControls() {
             onClick={togglePlay}
             className="size-8 shrink-0 rounded-full border border-night-700 bg-night-800 text-sm transition hover:bg-night-700"
             aria-label={isPlaying ? 'Pausa' : 'Play'}
+            title={`${isPlaying ? 'Pausa' : 'Play'} (Spazio)`}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>

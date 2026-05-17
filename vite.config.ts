@@ -79,6 +79,24 @@ export default defineConfig(({ command }) => {
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          // three.js core — heavy, shared by all 3D views.
+          if (/[\\/]node_modules[\\/]three[\\/]/.test(id)) return 'three';
+          // @react-three/fiber and @react-three/drei — only used by 3D views.
+          if (/[\\/]@react-three[\\/]drei[\\/]/.test(id)) return 'drei';
+          if (/[\\/]@react-three[\\/]fiber[\\/]/.test(id)) return 'r3f';
+          // astronomy-engine — large math tables, used by dashboard + planner.
+          if (/[\\/]astronomy-engine[\\/]/.test(id)) return 'astronomy';
+          // gif.js — only pulled in when the user records a GIF.
+          if (/[\\/]gif\.js[\\/]/.test(id)) return 'gif';
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
