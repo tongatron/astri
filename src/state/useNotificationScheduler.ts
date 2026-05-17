@@ -6,6 +6,38 @@ import { moonState } from '@/core/astronomy/moon';
 import { toObserver } from '@/core/astronomy/observer';
 import { upcomingPlanetEvents } from '@/core/astronomy/events';
 import { fetchAuroraForecast, auroraVisibility } from '@/core/aurora/swpc';
+import { fetchISSTLE, computeISSPasses, parseTLE } from '@/core/satellites/iss';
+
+const ISS_STORAGE_KEY = 'astri-iss-tle';
+const ISS_TLE_TTL_MS = 12 * 3600_000;
+const ISS_LOOK_AHEAD_MS = 2 * 3600_000; // scan next 2 hours for passes
+
+async function getCachedOrFreshTLE() {
+  try {
+    const raw = localStorage.getItem(ISS_STORAGE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw) as {
+        tle: { name: string; line1: string; line2: string };
+        fetchedAt: number;
+      };
+      if (Date.now() - obj.fetchedAt < ISS_TLE_TTL_MS) {
+        return parseTLE(`${obj.tle.name}\n${obj.tle.line1}\n${obj.tle.line2}`);
+      }
+    }
+  } catch {
+    // cache miss or corrupt — fall through to network
+  }
+  const fresh = await fetchISSTLE();
+  try {
+    localStorage.setItem(
+      ISS_STORAGE_KEY,
+      JSON.stringify({ tle: fresh, fetchedAt: Date.now() }),
+    );
+  } catch {
+    // ignore write failure
+  }
+  return fresh;
+}
 
 /**
  * Runs once per app open + on visibility-change back to "visible".
@@ -48,6 +80,31 @@ export function useNotificationScheduler() {
         nextEventTitle = null;
       }
 
+      // ISS passes in the next 2 hours (only when the category is enabled)
+      let nextIssPass: { riseTime: Date; peakAltitude: number } | null = null;
+      if (prefs.categories.issPass) {
+        try {
+          const tle = await getCachedOrFreshTLE();
+          const windowEnd = new Date(now.getTime() + ISS_LOOK_AHEAD_MS);
+          const passes = computeISSPasses(
+            tle,
+            location.lat,
+            location.lon,
+            now,
+            windowEnd,
+            10,
+          );
+          if (passes.length > 0) {
+            nextIssPass = {
+              riseTime: passes[0].riseTime,
+              peakAltitude: passes[0].peakAltitude,
+            };
+          }
+        } catch {
+          nextIssPass = null;
+        }
+      }
+
       const candidates = buildCandidates({
         location,
         tonightScore: null, // computed inside the Dashboard; skip here for simplicity
@@ -56,6 +113,7 @@ export function useNotificationScheduler() {
         moonPhaseName: moon.phaseName ?? null,
         moonIllumination: moon.illumination,
         upcomingEventTitle: nextEventTitle,
+        nextIssPass,
         aurora: auroraInput,
       });
 

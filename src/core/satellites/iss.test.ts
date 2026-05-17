@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { fetchISSTLE, issPosition, parseTLE } from './iss';
+import { computeISSPasses, fetchISSTLE, issPosition, parseTLE } from './iss';
 
 // Historical ISS TLE (epoch around 2024-10-01). Used as a stable fixture
 // so that propagation results are deterministic. Source: Celestrak.
@@ -45,6 +45,87 @@ describe('issPosition', () => {
     // ISS orbits at ~400-420 km. Allow generous range for TLE drift.
     expect(pos!.heightKm).toBeGreaterThan(350);
     expect(pos!.heightKm).toBeLessThan(500);
+  });
+});
+
+describe('computeISSPasses', () => {
+  // Use a TLE with an epoch close to the scan window so propagation is accurate.
+  // This TLE has epoch 2024-10-01T12:00:00Z (day 275.5 of 2024).
+  const PASS_TLE = {
+    name: 'ISS (ZARYA)',
+    line1: '1 25544U 98067A   24275.50000000  .00020000  00000-0  35000-3 0  9990',
+    line2: '2 25544  51.6400 100.0000 0005000  90.0000 270.0000 15.50000000470000',
+  };
+
+  it('returns an array (possibly empty) without throwing', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    expect(() =>
+      computeISSPasses(PASS_TLE, 41.9, 12.5, start, end),
+    ).not.toThrow();
+  });
+
+  it('all passes have riseTime < setTime', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end);
+    for (const p of passes) {
+      expect(p.riseTime.getTime()).toBeLessThanOrEqual(p.setTime.getTime());
+    }
+  });
+
+  it('peakTime is within [riseTime, setTime]', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end);
+    for (const p of passes) {
+      expect(p.peakTime.getTime()).toBeGreaterThanOrEqual(p.riseTime.getTime());
+      expect(p.peakTime.getTime()).toBeLessThanOrEqual(p.setTime.getTime());
+    }
+  });
+
+  it('peak altitude is >= minElevation for every pass', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const minEl = 10;
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end, minEl);
+    for (const p of passes) {
+      expect(p.peakAltitude).toBeGreaterThanOrEqual(minEl);
+      expect(p.peakAltitude).toBeLessThanOrEqual(90);
+    }
+  });
+
+  it('peakAzimuth is in [0, 360)', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end);
+    for (const p of passes) {
+      expect(p.peakAzimuth).toBeGreaterThanOrEqual(0);
+      expect(p.peakAzimuth).toBeLessThan(360);
+    }
+  });
+
+  it('durationSec >= 0 for every pass', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end);
+    for (const p of passes) {
+      expect(p.durationSec).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('returns empty array for a zero-length window', () => {
+    const t = new Date('2024-10-01T20:00:00Z');
+    const passes = computeISSPasses(PASS_TLE, 41.9, 12.5, t, t);
+    expect(passes).toHaveLength(0);
+  });
+
+  it('higher minElevation yields fewer or equal passes than lower threshold', () => {
+    const start = new Date('2024-10-01T20:00:00Z');
+    const end = new Date('2024-10-02T06:00:00Z');
+    const low = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end, 5);
+    const high = computeISSPasses(PASS_TLE, 41.9, 12.5, start, end, 40);
+    expect(low.length).toBeGreaterThanOrEqual(high.length);
   });
 });
 

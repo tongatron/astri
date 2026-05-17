@@ -96,4 +96,50 @@ describe('planObservingWindows', () => {
       }
     }
   });
+
+  it('score is always in [0, 100]', () => {
+    const from = new Date('2024-10-01T00:00:00Z');
+    const rows = planObservingWindows(A.Body.Jupiter, rome, from, 30);
+    for (const row of rows) {
+      expect(row.score).toBeGreaterThanOrEqual(0);
+      expect(row.score).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('new-moon nights score on average higher than full-moon nights for a visible body', () => {
+    // Jupiter is well placed in autumn 2024 for Rome.
+    const from = new Date('2024-10-01T00:00:00Z');
+    const rows = planObservingWindows(A.Body.Jupiter, rome, from, 30);
+    const withWindow = rows.filter((r) => r.windowStart !== null);
+    const newMoon = withWindow.filter((r) => r.moonIllumination < 0.15);
+    const fullMoon = withWindow.filter((r) => r.moonIllumination > 0.85);
+    if (newMoon.length > 0 && fullMoon.length > 0) {
+      const avgNew = newMoon.reduce((s, r) => s + r.score, 0) / newMoon.length;
+      const avgFull = fullMoon.reduce((s, r) => s + r.score, 0) / fullMoon.length;
+      expect(avgNew).toBeGreaterThan(avgFull);
+    }
+  });
+
+  it('higher minAltitude eliminates nights that pass the lower threshold', () => {
+    const from = new Date('2024-10-15T00:00:00Z');
+    const low = planObservingWindows(A.Body.Mars, rome, from, 14, 10);
+    const high = planObservingWindows(A.Body.Mars, rome, from, 14, 45);
+    const visLow = low.filter((r) => r.windowStart !== null).length;
+    const visHigh = high.filter((r) => r.windowStart !== null).length;
+    expect(visLow).toBeGreaterThanOrEqual(visHigh);
+  });
+
+  it('returns empty array for 0 days', () => {
+    const from = new Date('2024-10-15T00:00:00Z');
+    const rows = planObservingWindows(A.Body.Jupiter, rome, from, 0);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('dates are in ascending order', () => {
+    const from = new Date('2024-10-01T00:00:00Z');
+    const rows = planObservingWindows(A.Body.Jupiter, rome, from, 10);
+    for (let i = 1; i < rows.length; i++) {
+      expect(rows[i].date.getTime()).toBeGreaterThan(rows[i - 1].date.getTime());
+    }
+  });
 });

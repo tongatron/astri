@@ -73,7 +73,17 @@ export default function LocationPicker({ open, onClose }: Props) {
       },
       (err) => {
         setBusy(false);
-        setError(err.message || 'Permesso negato');
+        if (err.code === err.PERMISSION_DENIED) {
+          setError(
+            'Permesso negato. Sblocca la posizione nelle impostazioni del browser e riprova.',
+          );
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setError('Posizione non disponibile. Controlla il GPS o la rete.');
+        } else if (err.code === err.TIMEOUT) {
+          setError('Timeout: la posizione ha impiegato troppo. Riprova.');
+        } else {
+          setError(err.message || 'Errore sconosciuto');
+        }
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
     );

@@ -100,6 +100,8 @@ export function buildCandidates(input: {
   moonPhaseName: string | null;
   moonIllumination: number;
   upcomingEventTitle: string | null;
+  /** Next ISS pass visible from this location, if any within the next 2 hours. */
+  nextIssPass?: { riseTime: Date; peakAltitude: number } | null;
   aurora?: {
     currentKp: number;
     visibility: 'overhead' | 'low-north' | 'horizon-glow' | 'unlikely';
@@ -163,6 +165,29 @@ export function buildCandidates(input: {
         category: 'aurora',
         title: '🌌 Aurora boreale visibile',
         body: `Da ${input.location.name}: Kp ${input.aurora.currentKp.toFixed(1)} — aurora ${where}.`,
+      },
+    });
+  }
+
+  // ISS pass coming up within 2 hours
+  if (input.nextIssPass) {
+    const { riseTime, peakAltitude } = input.nextIssPass;
+    const minutesAway = Math.round(
+      (riseTime.getTime() - Date.now()) / 60_000,
+    );
+    const when =
+      minutesAway <= 1
+        ? 'tra meno di 1 minuto'
+        : minutesAway < 60
+          ? `tra ${minutesAway} min`
+          : `alle ${riseTime.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    out.push({
+      category: 'issPass',
+      payload: {
+        category: 'issPass',
+        title: '🛰 Passaggio ISS',
+        body: `Da ${input.location.name}: ISS visibile ${when}, picco ${Math.round(peakAltitude)}°.`,
+        tag: `issPass-${riseTime.toISOString()}`,
       },
     });
   }

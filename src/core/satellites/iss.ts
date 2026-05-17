@@ -119,3 +119,77 @@ export function issPosition(
     heightKm,
   };
 }
+
+export type ISSPass = {
+  /** When the ISS rises above minElevationDeg. */
+  riseTime: Date;
+  /** When the ISS sets below minElevationDeg. */
+  setTime: Date;
+  /** Time of maximum elevation during this pass. */
+  peakTime: Date;
+  /** Maximum elevation in degrees. */
+  peakAltitude: number;
+  /** Azimuth at peak, degrees from North clockwise. */
+  peakAzimuth: number;
+  /** Pass duration in seconds. */
+  durationSec: number;
+};
+
+/**
+ * Scan [windowStart, windowEnd] at 1-minute intervals and return all ISS
+ * passes where the satellite rises above `minElevationDeg`. Gaps shorter than
+ * 1 minute between two above-horizon samples are bridged (i.e. treated as a
+ * single pass).
+ */
+export function computeISSPasses(
+  tle: TLE,
+  observerLatDeg: number,
+  observerLonDeg: number,
+  windowStart: Date,
+  windowEnd: Date,
+  minElevationDeg = 10,
+): ISSPass[] {
+  const STEP_MS = 60_000;
+  const passes: ISSPass[] = [];
+
+  let inPass = false;
+  let samples: { t: Date; alt: number; az: number }[] = [];
+
+  const flush = () => {
+    if (samples.length === 0) return;
+    const best = samples.reduce((a, b) => (b.alt > a.alt ? b : a));
+    passes.push({
+      riseTime: samples[0].t,
+      setTime: samples[samples.length - 1].t,
+      peakTime: best.t,
+      peakAltitude: best.alt,
+      peakAzimuth: best.az,
+      durationSec:
+        (samples[samples.length - 1].t.getTime() - samples[0].t.getTime()) /
+        1_000,
+    });
+    samples = [];
+  };
+
+  for (
+    let ms = windowStart.getTime();
+    ms <= windowEnd.getTime();
+    ms += STEP_MS
+  ) {
+    const dt = new Date(ms);
+    const pos = issPosition(tle, dt, observerLatDeg, observerLonDeg, 0);
+    const alt = pos?.altitude ?? -90;
+    const az = pos?.azimuth ?? 0;
+
+    if (alt >= minElevationDeg) {
+      inPass = true;
+      samples.push({ t: dt, alt, az });
+    } else if (inPass) {
+      flush();
+      inPass = false;
+    }
+  }
+  if (inPass) flush();
+
+  return passes;
+}
