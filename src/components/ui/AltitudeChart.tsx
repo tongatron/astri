@@ -72,6 +72,7 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
     [planets],
   );
   const [visible, setVisible] = useState<Set<string>>(defaultVisible);
+  const [open, setOpen] = useState(false);
 
   const toggle = (key: string) =>
     setVisible((prev) => {
@@ -141,7 +142,22 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
   return (
     <section className="rounded-lg border border-night-800/80 bg-[#0a0f1a]/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-50">Traiettoria stanotte</h3>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="altitude-chart-body"
+          className="flex items-center gap-2 text-sm font-semibold text-slate-50 transition hover:text-slate-200"
+        >
+          <span
+            className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}
+            aria-hidden
+          >
+            ▸
+          </span>
+          Traiettoria stanotte
+        </button>
+        {open && (
         <div className="flex flex-wrap items-center gap-2 text-[10px]">
           <span className="flex items-center gap-1.5 text-night-300">
             <span className="inline-block size-2 rounded-full bg-sun" />
@@ -164,9 +180,12 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
+      {open && (
       <svg
+        id="altitude-chart-body"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="mt-3 w-full"
         role="img"
@@ -244,6 +263,7 @@ export default function AltitudeChart({ sun, moon, planets, now }: Props) {
           </g>
         )}
       </svg>
+      )}
     </section>
   );
 }

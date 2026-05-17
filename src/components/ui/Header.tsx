@@ -113,11 +113,12 @@ export default function Header() {
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            title="Impostazioni e notifiche"
-            aria-label="Impostazioni"
-            className="rounded-full border border-night-700 bg-night-900/60 px-3 py-1 text-night-300 transition hover:border-night-500 hover:bg-night-800 hover:text-slate-100"
+            title="Opzioni notifiche"
+            aria-label="Opzioni notifiche"
+            className="flex items-center gap-1 rounded-full border border-night-700 bg-night-900/60 px-3 py-1 text-night-300 transition hover:border-night-500 hover:bg-night-800 hover:text-slate-100"
           >
-            ⚙
+            <span aria-hidden>🔔</span>
+            <span>Notifiche</span>
           </button>
           <button
             onClick={onShare}
