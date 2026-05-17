@@ -14,7 +14,7 @@ import {
   visibilityLabel,
 } from '@/core/astronomy/format';
 import { formatDate, formatDateTime, formatTime } from '@/core/time/format';
-import { useDisplayTime } from '@/state/useDisplayTime';
+import { useQuantizedDisplayTime } from '@/state/useDisplayTime';
 import { useStore } from '@/state/store';
 import { useWeatherForecast } from '@/state/useWeatherForecast';
 import AltitudeChart from './AltitudeChart';
@@ -332,7 +332,9 @@ function EmptyDashboard() {
 
 export default function ObservingDashboard() {
   const location = useStore((s) => s.location);
-  const displayed = useDisplayTime();
+  // Dashboard data (TonightReport, planet states, weather scoring, etc.) is
+  // refreshed every 15 minutes. The header clock still ticks every second.
+  const displayed = useQuantizedDisplayTime(15 * 60_000);
   const weather = useWeatherForecast(location);
 
   const model = useMemo(() => {

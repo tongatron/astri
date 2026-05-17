@@ -4,7 +4,7 @@ import { planObservingWindows, type NightlyWindow } from '@/core/astronomy/obser
 import { exportICS } from '@/core/astronomy/ics';
 import { toObserver } from '@/core/astronomy/observer';
 import { useStore } from '@/state/store';
-import { useDisplayTime } from '@/state/useDisplayTime';
+import { useQuantizedDisplayTime } from '@/state/useDisplayTime';
 import { formatTime } from '@/core/time/format';
 import { formatAngle, formatPercent } from '@/core/astronomy/format';
 
@@ -147,7 +147,8 @@ function NightRow({ w, isTop }: RowProps) {
 
 export default function ObservingPlanner() {
   const location = useStore((s) => s.location);
-  const displayed = useDisplayTime();
+  // Planner spans days; 15-min refresh is more than enough.
+  const displayed = useQuantizedDisplayTime(15 * 60_000);
   const [selectedPlanet, setSelectedPlanet] = useState(PLANETS[4]); // Saturno default
   const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
 
