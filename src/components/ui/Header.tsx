@@ -11,6 +11,8 @@ export default function Header() {
   const setView = useStore((s) => s.setView);
   const timeMode = useStore((s) => s.timeMode);
   const simulatedTime = useStore((s) => s.simulatedTime);
+  const nightRedMode = useStore((s) => s.nightRedMode);
+  const setNightRedMode = useStore((s) => s.setNightRedMode);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shareLabel, setShareLabel] = useState<'idle' | 'copied' | 'failed'>('idle');
   const displayed = useDisplayTime();
@@ -80,6 +82,22 @@ export default function Header() {
           <span className="rounded-full border border-night-800 bg-night-900/40 px-3 py-1 text-night-300">
             {formatDateTime(displayed)}
           </span>
+          <button
+            onClick={() => setNightRedMode(!nightRedMode)}
+            title={
+              nightRedMode
+                ? 'Disattiva modalità rossa notturna'
+                : 'Attiva modalità rossa (preserva visione scotopica)'
+            }
+            aria-pressed={nightRedMode}
+            className={`rounded-full border px-3 py-1 transition ${
+              nightRedMode
+                ? 'border-rose-500 bg-rose-900/40 text-rose-200'
+                : 'border-night-700 bg-night-900/60 text-night-300 hover:border-night-500 hover:bg-night-800 hover:text-slate-100'
+            }`}
+          >
+            {nightRedMode ? '🔴 Notte' : '🌙 Notte'}
+          </button>
           <button
             onClick={onShare}
             title="Copia link condivisibile con posizione, vista e tempo correnti"

@@ -22,6 +22,10 @@ type Store = {
   hasOnboarded: boolean;
   setHasOnboarded: (b: boolean) => void;
 
+  /** Red-only theme that preserves scotopic (dark-adapted) night vision. */
+  nightRedMode: boolean;
+  setNightRedMode: (b: boolean) => void;
+
   timeMode: TimeMode;
   /** Epoch ms when in simulated mode. Ignored when mode === 'real'. */
   simulatedTime: number;
@@ -50,6 +54,9 @@ export const useStore = create<Store>()(
 
       hasOnboarded: false,
       setHasOnboarded: (b) => set({ hasOnboarded: b }),
+
+      nightRedMode: false,
+      setNightRedMode: (b) => set({ nightRedMode: b }),
 
       timeMode: 'real',
       simulatedTime: Date.now(),
@@ -85,6 +92,7 @@ export const useStore = create<Store>()(
         timeMode: s.timeMode,
         simulatedTime: s.simulatedTime,
         isPlaying: s.isPlaying,
+        nightRedMode: s.nightRedMode,
       }),
     },
   ),

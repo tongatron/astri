@@ -40,3 +40,11 @@ body {
     radial-gradient(ellipse at bottom, rgba(10, 12, 30, 1), rgba(7, 9, 28, 1));
   background-attachment: fixed;
 }
+
+/* Night red mode: collapses everything to a pure-red palette so the screen
+ * doesn't destroy the user's dark adaptation. sepia(1) flattens hue, then
+ * we rotate to red and crush saturation high. Applied at the body level
+ * so html-level UI (the data-theme attr) and overlay modals are included. */
+html[data-theme='night-red'] body {
+  filter: sepia(1) saturate(8) hue-rotate(-50deg) brightness(0.85);
+}

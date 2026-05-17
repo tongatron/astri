@@ -22,7 +22,17 @@ function SceneFallback({ label }: { label: string }) {
 export default function App() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
+  const nightRedMode = useStore((s) => s.nightRedMode);
   const backToDashboard = () => setView('dashboard');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (nightRedMode) {
+      root.dataset.theme = 'night-red';
+    } else {
+      delete root.dataset.theme;
+    }
+  }, [nightRedMode]);
 
   useEffect(() => {
     const parsed = parseUrlState(window.location.search);
