@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { PlanetTrack } from './AltitudeChart';
 import type { MoonState } from '@/core/astronomy/moon';
 import { formatTime } from '@/core/time/format';
@@ -157,6 +158,7 @@ export default function TonightReport({
   bortle,
 }: Props) {
   const bortleCls = bortle?.class ?? null;
+  const [bortleOpen, setBortleOpen] = useState(false);
   const weatherSamples =
     weather && weather.status === 'ready' ? weather.samples : null;
   // Nautical night: sun < -12°
@@ -220,14 +222,14 @@ export default function TonightReport({
           {bortle && (
             <>
               <span className="text-night-600">·</span>
-              <span
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${bortleChipTone(bortle.class)}`}
-                title={`${bortle.label} — ${bortle.description}${
-                  bortle.nearest ? ` (${bortle.nearest.name} a ${bortle.nearest.km} km)` : ''
-                }`}
+              <button
+                type="button"
+                onClick={() => setBortleOpen(true)}
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition hover:brightness-125 ${bortleChipTone(bortle.class)}`}
+                title="Clicca per la legenda della scala Bortle"
               >
                 Bortle {bortle.class}
-              </span>
+              </button>
             </>
           )}
           {weather?.status === 'loading' && (
@@ -299,6 +301,94 @@ export default function TonightReport({
           ))}
         </div>
       )}
+      {bortleOpen && bortle && (
+        <BortleLegend current={bortle.class} bortle={bortle} onClose={() => setBortleOpen(false)} />
+      )}
     </section>
+  );
+}
+
+function BortleLegend({
+  current,
+  bortle,
+  onClose,
+}: {
+  current: number;
+  bortle: BortleEstimate;
+  onClose: () => void;
+}) {
+  const rows: { cls: number; label: string; desc: string }[] = [
+    { cls: 1, label: 'Cielo eccellente', desc: 'Via Lattea ricca di dettagli, luminescenza zodiacale visibile.' },
+    { cls: 2, label: 'Cielo tipico rurale', desc: 'Via Lattea molto strutturata, M31 nettamente visibile.' },
+    { cls: 3, label: 'Cielo rurale', desc: 'Via Lattea ben visibile, alone galattico evidente.' },
+    { cls: 4, label: 'Transizione rurale-suburbano', desc: 'Via Lattea ancora visibile, struttura ridotta verso l\'orizzonte.' },
+    { cls: 5, label: 'Cielo suburbano', desc: 'Via Lattea debole allo zenit, perde dettaglio sotto i 30°.' },
+    { cls: 6, label: 'Suburbano luminoso', desc: 'Via Lattea appena percettibile, cielo grigio chiaro.' },
+    { cls: 7, label: 'Transizione suburbano-urbano', desc: 'Cielo perennemente illuminato, Via Lattea non visibile.' },
+    { cls: 8, label: 'Cielo urbano', desc: 'Solo pianeti e stelle più brillanti.' },
+    { cls: 9, label: 'Centro città', desc: 'Cielo arancione, poche stelle visibili anche allo zenit.' },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-night-950/80 p-4 backdrop-blur"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl border border-night-700 bg-night-900 p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-50">Scala Bortle</h2>
+            <p className="mt-1 text-xs text-night-400">
+              Misura della qualità del cielo notturno in 9 classi (1 = eccellente, 9 = centro città).
+              {bortle.nearest && (
+                <> Stima basata su {bortle.nearest.name} a {bortle.nearest.km} km.</>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-night-700 px-2 py-0.5 text-xs text-night-300 hover:bg-night-800"
+          >
+            ✕
+          </button>
+        </div>
+
+        <ul className="mt-4 space-y-1.5">
+          {rows.map((r) => {
+            const active = r.cls === current;
+            return (
+              <li
+                key={r.cls}
+                className={`flex items-start gap-3 rounded-lg border p-2.5 text-xs ${
+                  active
+                    ? `${bortleChipTone(r.cls)} ring-1 ring-inset ring-current/30`
+                    : 'border-night-800/70 bg-night-950/40 text-night-300'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    active ? 'bg-current/20' : 'bg-night-800 text-night-300'
+                  }`}
+                >
+                  {r.cls}
+                </span>
+                <div>
+                  <div className={`font-semibold ${active ? '' : 'text-slate-200'}`}>{r.label}</div>
+                  <div className={`mt-0.5 ${active ? 'opacity-80' : 'text-night-400'}`}>{r.desc}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="mt-4 text-[11px] leading-relaxed text-night-500">
+          Stima approssimata basata su distanza e popolazione delle principali città. Non sostituisce
+          una misura SQM in loco o le mappe satellitari VIIRS/Falchi.
+        </p>
+      </div>
+    </div>
   );
 }
