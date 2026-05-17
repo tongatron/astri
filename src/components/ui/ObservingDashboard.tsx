@@ -21,6 +21,7 @@ import { estimateBortle } from '@/core/light-pollution/bortle';
 import { useAuroraForecast } from '@/state/useAuroraForecast';
 import AltitudeChart from './AltitudeChart';
 import MoonPhaseCalendar from './MoonPhaseCalendar';
+import MessierSection from './MessierSection';
 import ObservingPlanner from './ObservingPlanner';
 import TonightReport from './TonightReport';
 import UpcomingEvents from './UpcomingEvents';
@@ -366,12 +367,12 @@ export default function ObservingDashboard() {
     }));
     const planetInstruments = Object.fromEntries(PLANET_META.map((p) => [p.key, p.instrument]));
 
-    return { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments };
+    return { observer, sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments };
   }, [displayed, location]);
 
   if (!location || !model) return <EmptyDashboard />;
 
-  const { sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments } = model;
+  const { observer, sun, moon, planets, sunTrack, moonTrack, moonWindow, timeline, dayStart, planetTracks, planetInstruments } = model;
   const bestSun = Math.max(...sunTrack.map((p) => p.altitude));
   const bestMoon = Math.max(...moonTrack.map((p) => p.altitude));
   const isNight = sun.altitude < -6;
@@ -538,6 +539,8 @@ export default function ObservingDashboard() {
           <UpcomingEvents reference={displayed} />
           <MoonPhaseCalendar reference={displayed} />
         </section>
+
+        <MessierSection observer={observer} displayed={displayed} />
 
         <ObservingPlanner />
       </div>
