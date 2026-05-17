@@ -4,8 +4,6 @@ import { useDisplayTime } from '@/state/useDisplayTime';
 import { formatDateTime } from '@/core/time/format';
 import { buildShareUrl } from '@/state/urlState';
 import LocationPicker from './LocationPicker';
-import SettingsPanel from './SettingsPanel';
-
 export default function Header() {
   const location = useStore((s) => s.location);
   const view = useStore((s) => s.view);
@@ -15,7 +13,6 @@ export default function Header() {
   const nightRedMode = useStore((s) => s.nightRedMode);
   const setNightRedMode = useStore((s) => s.setNightRedMode);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareLabel, setShareLabel] = useState<'idle' | 'copied' | 'failed'>('idle');
   const displayed = useDisplayTime();
 
@@ -112,15 +109,6 @@ export default function Header() {
             {nightRedMode ? '🔴 Notte' : '🌙 Notte'}
           </button>
           <button
-            onClick={() => setSettingsOpen(true)}
-            title="Opzioni notifiche"
-            aria-label="Opzioni notifiche"
-            className="flex items-center gap-1 rounded-full border border-night-700 bg-night-900/60 px-3 py-1 text-night-300 transition hover:border-night-500 hover:bg-night-800 hover:text-slate-100"
-          >
-            <span aria-hidden>🔔</span>
-            <span>Notifiche</span>
-          </button>
-          <button
             onClick={onShare}
             title="Copia link condivisibile con posizione, vista e tempo correnti"
             className={`rounded-full border px-3 py-1 transition ${
@@ -142,7 +130,6 @@ export default function Header() {
         </div>
       </header>
       <LocationPicker open={pickerOpen} onClose={() => setPickerOpen(false)} />
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }
