@@ -12,6 +12,7 @@ import {
   MESSIER_TYPE_LABEL,
   messierInstrument,
 } from '@/data/messier';
+import MessierLegend from '@/components/ui/MessierLegend';
 
 type CompassState = 'unsupported' | 'idle' | 'active';
 
@@ -72,6 +73,7 @@ export default function SkyChart2D() {
   const compass = useCompass();
   const [showMessier, setShowMessier] = useState(false);
   const [messierMagLimit, setMessierMagLimit] = useState(7);
+  const [messierLegendOpen, setMessierLegendOpen] = useState(false);
   const [selectedMessier, setSelectedMessier] = useState<string | null>(null);
   const hitTestRef = useRef<SkyChartHitTest>({ messier: [] });
 
@@ -288,22 +290,32 @@ export default function SkyChart2D() {
 
       {/* Messier panel */}
       <div className="pointer-events-auto absolute bottom-4 left-4 flex flex-col gap-2">
-        <button
-          onClick={() => setShowMessier((v) => !v)}
-          className={[
-            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
-            showMessier
-              ? 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60'
-              : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200',
-          ].join(' ')}
-          title="Mostra il catalogo Messier (M1–M110): nebulose, ammassi, galassie"
-        >
-          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
-            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-          </svg>
-          Messier {showMessier ? '(on)' : '(off)'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowMessier((v) => !v)}
+            className={[
+              'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur transition',
+              showMessier
+                ? 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60'
+                : 'border-night-700 bg-night-950/80 text-slate-200 hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200',
+            ].join(' ')}
+            title="Mostra il catalogo Messier (M1–M110): nebulose, ammassi, galassie"
+          >
+            <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+              <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+            </svg>
+            Messier {showMessier ? '(on)' : '(off)'}
+          </button>
+          <button
+            onClick={() => setMessierLegendOpen(true)}
+            title="Legenda e spiegazioni del catalogo Messier"
+            aria-label="Apri legenda Messier"
+            className="flex size-9 items-center justify-center rounded-lg border border-night-700 bg-night-950/80 text-xs font-bold text-night-300 shadow-lg backdrop-blur transition hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200"
+          >
+            ?
+          </button>
+        </div>
         {showMessier && (
           <div className="rounded-lg border border-night-700 bg-night-950/85 px-3 py-2 text-[10px] text-night-300 shadow-lg backdrop-blur">
             <label className="flex items-center gap-2">
@@ -391,6 +403,7 @@ export default function SkyChart2D() {
           )}
         </div>
       </div>
+      <MessierLegend open={messierLegendOpen} onClose={() => setMessierLegendOpen(false)} />
     </div>
   );
 }
