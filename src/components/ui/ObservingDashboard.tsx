@@ -104,31 +104,23 @@ function buildTimeline({
   pushEvent('moon-rise', moon.rise, 'Sorge la Luna', moon.phaseName, 'moon');
   pushEvent('moon-set', moon.set, 'Tramonta la Luna', moon.phaseName, 'moon');
 
-  planets.slice(0, 7).forEach((planet) => {
+  // One headline planet: brightest naked-eye planet whose transit falls in
+  // the next 24h. Rise/set/transit of every planet duplicates TonightReport,
+  // so we keep only this single marker for orientation.
+  const headline = planets
+    .filter((p) => p.instrument === 'occhio nudo' && inFutureWindow(p.transit, from))
+    .sort((a, b) => a.magnitude - b.magnitude)[0];
+  if (headline) {
     pushEvent(
-      `${planet.key}-rise`,
-      planet.rise,
-      `Sorge ${planet.name}`,
-      `${planet.instrument}, mag ${formatMagnitude(planet.magnitude)}`,
+      `${headline.key}-transit`,
+      headline.transit,
+      `${headline.name} al massimo`,
+      `Al meridiano · mag ${formatMagnitude(headline.magnitude)}`,
       'planet',
     );
-    pushEvent(
-      `${planet.key}-transit`,
-      planet.transit,
-      `${planet.name} al massimo`,
-      `${formatAngle(planet.altitude)} ora, direzione ${compassDirection(planet.azimuth)}`,
-      'planet',
-    );
-    pushEvent(
-      `${planet.key}-set`,
-      planet.set,
-      `Tramonta ${planet.name}`,
-      `${planet.instrument}, elongazione ${formatAngle(planet.elongation, 0)}`,
-      'planet',
-    );
-  });
+  }
 
-  return events.sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, 9);
+  return events.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
