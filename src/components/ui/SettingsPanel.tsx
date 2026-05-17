@@ -17,6 +17,11 @@ const CATEGORY_META: {
     description: 'Quando stasera ha condizioni favorevoli (cielo terso, Luna gestibile).',
   },
   {
+    key: 'aurora',
+    label: 'Aurora boreale',
+    description: 'Quando l\'attività geomagnetica rende l\'aurora visibile dalla tua posizione (dati NOAA).',
+  },
+  {
     key: 'moonPhase',
     label: 'Fasi lunari notabili',
     description: 'Luna piena e Luna nuova.',

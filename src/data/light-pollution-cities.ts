@@ -100,4 +100,23 @@ export const LIGHT_SOURCES: LightSource[] = [
   { name: 'Tunisi', lat: 36.8065, lon: 10.1815, pop: 2400 },
   { name: 'Algeri', lat: 36.7372, lon: 3.0866, pop: 3400 },
   { name: 'Valletta', lat: 35.8989, lon: 14.5146, pop: 480 },
+
+  // Nordics & UK — utili per turismo aurora boreale
+  { name: 'Reykjavík', lat: 64.1466, lon: -21.9426, pop: 240 },
+  { name: 'Akureyri', lat: 65.6835, lon: -18.1262, pop: 20 },
+  { name: 'Tromsø', lat: 69.6492, lon: 18.9553, pop: 78 },
+  { name: 'Oslo', lat: 59.9139, lon: 10.7522, pop: 1050 },
+  { name: 'Bergen', lat: 60.3913, lon: 5.3221, pop: 285 },
+  { name: 'Stoccolma', lat: 59.3293, lon: 18.0686, pop: 1650 },
+  { name: 'Göteborg', lat: 57.7089, lon: 11.9746, pop: 600 },
+  { name: 'Helsinki', lat: 60.1699, lon: 24.9384, pop: 1330 },
+  { name: 'Copenaghen', lat: 55.6761, lon: 12.5683, pop: 1380 },
+  { name: 'Tallinn', lat: 59.437, lon: 24.7536, pop: 440 },
+  { name: 'Riga', lat: 56.9496, lon: 24.1052, pop: 615 },
+  { name: 'Vilnius', lat: 54.6872, lon: 25.2797, pop: 590 },
+  { name: 'Edimburgo', lat: 55.9533, lon: -3.1883, pop: 540 },
+  { name: 'Glasgow', lat: 55.8642, lon: -4.2518, pop: 1680 },
+  { name: 'Dublino', lat: 53.3498, lon: -6.2603, pop: 1450 },
+  { name: 'Amsterdam', lat: 52.3676, lon: 4.9041, pop: 1180 },
+  { name: 'Bruxelles', lat: 50.8503, lon: 4.3517, pop: 2100 },
 ];
