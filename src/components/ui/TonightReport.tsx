@@ -64,10 +64,13 @@ function computeBody(
     };
   }
 
+  // Samples are spaced 20 min apart and represent the *start* of a 20 min slot.
+  // The actual end of the window is one slot after the last visible sample.
+  const SAMPLE_MIN = 20;
   const windowStart = visible[0].t;
-  const windowEnd = visible[visible.length - 1].t;
+  const windowEnd = new Date(visible[visible.length - 1].t.getTime() + SAMPLE_MIN * 60_000);
   const best = visible.reduce((a, b) => (b.altitude > a.altitude ? b : a));
-  const durationMin = visible.length * 20;
+  const durationMin = visible.length * SAMPLE_MIN;
   const altScore = Math.min(50, (best.altitude / 90) * 50);
   const durScore = Math.min(30, (durationMin / 360) * 30);
   const moonPenalty = key === 'moon' ? 0 : moonIllum * 20;
