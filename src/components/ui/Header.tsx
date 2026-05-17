@@ -111,6 +111,15 @@ export default function Header() {
           >
             {shareLabel === 'copied' ? '✓ Copiato' : shareLabel === 'failed' ? 'Errore' : 'Condividi'}
           </button>
+          <a
+            href="https://tongatron.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="tongatron.org"
+            className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 font-mono text-[10px] text-night-500 transition hover:border-night-600 hover:text-night-300 sm:inline-block"
+          >
+            &gt; tongatron.org_
+          </a>
           <span
             className="hidden rounded-full border border-night-800/50 bg-night-900/30 px-2.5 py-1 text-[10px] text-night-500 sm:inline-block"
           >
