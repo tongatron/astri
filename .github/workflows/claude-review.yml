@@ -1,0 +1,51 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Astri è un'app web per esplorare il cielo notturno (React + Vite + TypeScript,
+            astronomy-engine per i calcoli, three.js per le viste 3D, Zustand per lo stato,
+            Tailwind v4 per lo stile, vite-plugin-pwa). Codice e UI sono in italiano.
+            Test con Vitest + @testing-library/react.
+
+            Rivedi il diff di questa PR concentrandoti su:
+            - bug e regressioni (in particolare nei wrapper `core/astronomy/*` e in
+              `sky-chart-draw.ts`, dove abbiamo già avuto bug di proiezione e di
+              `addColorStop`)
+            - edge case mancanti e copertura test (specie per nuovo codice non astronomico)
+            - sicurezza (input non validati, query string, localStorage)
+            - performance (loop che ricalcolano astronomy-engine ad alta frequenza,
+              re-render React inutili, bundle size)
+            - accessibilità (focus, aria, contrasti) per modifiche UI
+
+            Sii conciso, raggruppa per file. Non lodare, segnala solo cose
+            azionabili. Se la PR è piccola e pulita, dillo in una riga.
+
+            Il branch della PR è già nel working directory.
+            Usa `gh pr comment` per il commento di riepilogo.
+            Usa `mcp__github_inline_comment__create_inline_comment` (con
+            `confirmed: true`) per i rilievi puntuali sulle righe.
+            Posta solo commenti su GitHub — non rispondere come messaggio.
+
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

@@ -1,0 +1,63 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    # Group related packages so Dependabot opens one PR per family
+    # instead of one per package — three/drei/r3f especially are
+    # versioned together and need coordinated bumps.
+    groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+      three-stack:
+        patterns:
+          - three
+          - '@types/three'
+          - '@react-three/*'
+      testing:
+        patterns:
+          - vitest
+          - jsdom
+          - '@testing-library/*'
+      lint-format:
+        patterns:
+          - eslint
+          - '@eslint/*'
+          - typescript-eslint
+          - eslint-plugin-*
+          - prettier
+      tailwind:
+        patterns:
+          - tailwindcss
+          - '@tailwindcss/*'
+      vite:
+        patterns:
+          - vite
+          - '@vitejs/*'
+          - vite-plugin-*
+          - rollup-plugin-*
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+    commit-message:
+      prefix: ci
