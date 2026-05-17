@@ -26,6 +26,7 @@ import {
   MESSIER_TYPE_LABEL,
   messierInstrument,
 } from '@/data/messier';
+import MessierLegend from '@/components/ui/MessierLegend';
 import {
   compassDirection,
   formatAngle,
@@ -482,6 +483,7 @@ export default function SkySphere3D() {
   const [gifPhase, setGifPhase] = useState<GifPhase>('idle');
   const [gifProgress, setGifProgress] = useState({ frame: 0, total: 0, encoding: 0 });
   const [showMessier, setShowMessier] = useState(false);
+  const [messierLegendOpen, setMessierLegendOpen] = useState(false);
 
   const startGif = useCallback(async () => {
     if (!location || !captureRef.current) return;
@@ -769,6 +771,14 @@ export default function SkySphere3D() {
           Messier
         </button>
         <button
+          onClick={() => setMessierLegendOpen(true)}
+          title="Legenda e spiegazioni del catalogo Messier"
+          aria-label="Apri legenda Messier"
+          className="flex size-9 items-center justify-center rounded-lg border border-night-700 bg-night-950/80 text-xs font-bold text-night-300 shadow-lg backdrop-blur transition hover:border-fuchsia-700 hover:bg-fuchsia-900/30 hover:text-fuchsia-200"
+        >
+          ?
+        </button>
+        <button
           onClick={startGif}
           disabled={gifPhase !== 'idle' || !location}
           className="flex items-center gap-2 rounded-lg border border-night-700 bg-night-950/80 px-3 py-2 text-xs font-medium text-slate-200 shadow-lg backdrop-blur transition hover:border-emerald-700 hover:bg-emerald-900/40 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
@@ -792,6 +802,7 @@ export default function SkySphere3D() {
           <div className="text-night-400">click su corpi o stelle per info</div>
         </div>
       </div>
+      <MessierLegend open={messierLegendOpen} onClose={() => setMessierLegendOpen(false)} />
     </div>
   );
 }
