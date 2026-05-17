@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -19,11 +20,20 @@ function gitInfo() {
 export default defineConfig(({ command }) => {
   const { hash, isoDate } = gitInfo();
   const base = command === 'build' ? (process.env.VITE_BASE ?? '/astri/') : '/';
+  const analyze = process.env.ANALYZE === '1';
   return {
   base,
   plugins: [
     react(),
     tailwindcss(),
+    analyze &&
+      visualizer({
+        filename: 'dist/bundle-stats.html',
+        template: 'treemap',
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+      }),
     VitePWA({
       registerType: 'autoUpdate',
       base,
@@ -72,6 +82,7 @@ export default defineConfig(({ command }) => {
   test: {
     environment: 'jsdom',
     globals: true,
+    setupFiles: ['./src/test-setup.ts'],
   },
   };
 });
